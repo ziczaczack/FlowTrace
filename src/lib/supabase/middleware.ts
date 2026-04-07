@@ -45,25 +45,25 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Protected routes — redirect to /login if unauthenticated
-  const protectedPaths = ["/dashboard", "/analytics", "/timeline"];
-  const isProtected = protectedPaths.some((path) =>
-    pathname.startsWith(path)
-  );
+  // Public routes — never gate these.
+  const publicPaths = ["/login", "/signup"];
+  const isPublic =
+    publicPaths.some((path) => pathname.startsWith(path)) ||
+    pathname.startsWith("/api/");
 
-  if (isProtected && !user) {
+  // Everything else (including "/", which renders the dashboard via the
+  // (dashboard) route group) is protected.
+  if (!isPublic && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // Auth routes — redirect signed-in users to /dashboard
-  const authPaths = ["/login", "/signup"];
-  const isAuthPath = authPaths.some((path) => pathname.startsWith(path));
-
+  // Auth routes — redirect signed-in users to the dashboard ("/").
+  const isAuthPath = publicPaths.some((path) => pathname.startsWith(path));
   if (isAuthPath && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 

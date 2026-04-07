@@ -68,6 +68,28 @@ export interface Budget {
   created_at: string;
 }
 
+export interface MonthlyFlow {
+  month: number;
+  year: number;
+  income: number;
+  expense: number;
+}
+
+export interface GroupedTransactions {
+  date: string; // YYYY-MM-DD
+  label: string; // "Today" | "Yesterday" | "Mon, 7 Apr"
+  transactions: Transaction[];
+}
+
+export interface CategoryTotal {
+  categoryId: string;
+  name: string;
+  icon: string;
+  color: string;
+  total: number;
+  percentage: number;
+}
+
 export interface MonthlyReport {
   id: string;
   user_id: string;

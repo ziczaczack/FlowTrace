@@ -121,8 +121,8 @@ Update this section as features are completed:
 - [x] Schema pushed to Supabase (supabase/schema.sql)
 - [x] Auth pages (login, signup)
 - [x] Transaction CRUD
-- [ ] Dashboard page
-- [ ] Timeline page
+- [x] Dashboard page
+- [x] Timeline page
 - [ ] Analytics page
 - [ ] Monthly report logic
 - [ ] Dark mode
