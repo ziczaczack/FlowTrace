@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(mkdir -p \"src/app/\\(dashboard\\)/dashboard\")",
+      "Bash(mv \"src/app/\\(dashboard\\)/page.tsx\" \"src/app/\\(dashboard\\)/dashboard/page.tsx\")",
+      "Bash(mv \"src/app/\\(dashboard\\)/dashboard-client.tsx\" \"src/app/\\(dashboard\\)/dashboard/dashboard-client.tsx\")"
+    ]
+  }
+}
