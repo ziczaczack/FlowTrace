@@ -22,13 +22,13 @@ export function Button({
   const isDisabled = disabled || loading;
 
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#162032] disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60";
 
   const variants: Record<ButtonVariant, string> = {
     primary:
-      "bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]",
+      "bg-primary text-primary-fg shadow-sm hover:bg-primary-hover hover:shadow",
     ghost:
-      "bg-transparent text-white border border-white/30 hover:bg-white/10 focus-visible:ring-white/40",
+      "bg-transparent text-foreground border border-border hover:bg-surface-muted",
   };
 
   return (

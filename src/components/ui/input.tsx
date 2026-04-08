@@ -21,7 +21,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       {label && (
         <label
           htmlFor={inputId}
-          className="text-sm font-medium text-white/80"
+          className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
         >
           {label}
         </label>
@@ -36,21 +36,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         aria-invalid={hasError || undefined}
         aria-describedby={hasError ? `${inputId}-error` : undefined}
         className={[
-          "w-full rounded-md px-3 py-2.5 text-sm text-white placeholder:text-white/40",
-          "bg-[#1E2D45] border transition-colors",
+          "w-full rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-subtle-foreground",
+          "bg-surface-muted border transition-colors duration-200",
           hasError
-            ? "border-[#F43F5E] focus:border-[#F43F5E] focus:ring-2 focus:ring-[#F43F5E]/40"
-            : "border-[#2E4060] focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/40",
+            ? "border-negative focus:border-negative focus:ring-2 focus:ring-[var(--negative-soft)]"
+            : "border-border hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-[var(--ring)]",
           "outline-none disabled:cursor-not-allowed disabled:opacity-60",
           className ?? "",
         ].join(" ")}
         {...rest}
       />
       {hasError && (
-        <p
-          id={`${inputId}-error`}
-          className="text-xs text-[#F43F5E]"
-        >
+        <p id={`${inputId}-error`} className="text-xs text-negative">
           {error}
         </p>
       )}

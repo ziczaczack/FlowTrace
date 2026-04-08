@@ -35,15 +35,15 @@ export function MonthSelector({
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
-  // Lower bound: January of the year the user signed up. If we don't have
-  // a creation date, fall back to January of the current year.
-  let lowerYear = currentYear;
-  let lowerMonth = 1;
+  // Lower bound: 10 years before the user signed up (or before today if no
+  // creation date is available). Users frequently want to back-fill old
+  // transactions, so we don't want to lock the picker to the signup year.
+  let lowerYear = currentYear - 10;
+  const lowerMonth = 1;
   if (accountCreatedAt) {
     const created = new Date(accountCreatedAt);
     if (!Number.isNaN(created.getTime())) {
-      lowerYear = created.getFullYear();
-      lowerMonth = 1;
+      lowerYear = created.getFullYear() - 10;
     }
   }
 
@@ -70,11 +70,11 @@ export function MonthSelector({
         onClick={() => go(-1)}
         disabled={atLowerBound}
         aria-label="Previous month"
-        className="rounded-full p-1.5 text-white/60 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/20 disabled:hover:bg-transparent"
+        className="cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:text-subtle-foreground disabled:hover:bg-transparent disabled:hover:text-subtle-foreground"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
-      <p className="min-w-[140px] text-center text-base font-medium text-white">
+      <p className="min-w-[140px] text-center text-base font-medium text-foreground">
         {MONTH_NAMES[month - 1]} {year}
       </p>
       <button
@@ -82,7 +82,7 @@ export function MonthSelector({
         onClick={() => go(1)}
         disabled={atUpperBound}
         aria-label="Next month"
-        className="rounded-full p-1.5 text-white/60 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/20 disabled:hover:bg-transparent"
+        className="cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:text-subtle-foreground disabled:hover:bg-transparent disabled:hover:text-subtle-foreground"
       >
         <ChevronRight className="h-5 w-5" />
       </button>

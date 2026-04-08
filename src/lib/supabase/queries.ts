@@ -379,6 +379,216 @@ export async function getDashboardSummary(
   };
 }
 
+/**
+ * Last 12 months of income/expense/net for the user, oldest → newest.
+ * Includes the current month.
+ */
+export async function getLast12MonthsFlow(
+  userId: string,
+): Promise<MonthlyFlow[]> {
+  const supabase = await createClient();
+
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id")
+    .eq("user_id", userId);
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  const buckets: MonthlyFlow[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(currentYear, currentMonth - 1 - i, 1);
+    buckets.push({
+      month: d.getMonth() + 1,
+      year: d.getFullYear(),
+      income: 0,
+      expense: 0,
+    });
+  }
+  if (ledgerIds.length === 0) return buckets;
+
+  const start = firstDayOfMonth(buckets[0].year, buckets[0].month);
+  const end = lastDayOfMonth(currentYear, currentMonth);
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("amount, type, txn_date")
+    .in("ledger_id", ledgerIds)
+    .gte("txn_date", start)
+    .lte("txn_date", end);
+  if (error) throw new Error(error.message);
+
+  const bucketKey = (m: number, y: number) => `${y}-${m}`;
+  const idxMap = new Map(
+    buckets.map((b, idx) => [bucketKey(b.month, b.year), idx]),
+  );
+
+  for (const row of (data ?? []) as Array<{
+    amount: string;
+    type: string;
+    txn_date: string;
+  }>) {
+    const value = parseFloat(row.amount);
+    if (!Number.isFinite(value)) continue;
+    const [yStr, mStr] = row.txn_date.split("-");
+    const idx = idxMap.get(bucketKey(Number(mStr), Number(yStr)));
+    if (idx === undefined) continue;
+    if (row.type === "income") buckets[idx].income += value;
+    else if (row.type === "expense") buckets[idx].expense += value;
+  }
+
+  return buckets;
+}
+
+/**
+ * Compares this month's expense by category against last month's. Categories
+ * are ordered by current-month spend descending. Categories present in only
+ * one month are still returned with `total: 0` for the missing month.
+ */
+export async function getCurrentVsPreviousMonth(userId: string): Promise<{
+  categories: string[];
+  current: CategoryTotal[];
+  previous: CategoryTotal[];
+}> {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const prevDate = new Date(currentYear, currentMonth - 2, 1);
+  const prevMonth = prevDate.getMonth() + 1;
+  const prevYear = prevDate.getFullYear();
+
+  const [current, previous] = await Promise.all([
+    getCategoryMonthlyBreakdown(userId, currentMonth, currentYear),
+    getCategoryMonthlyBreakdown(userId, prevMonth, prevYear),
+  ]);
+
+  // Union of category ids preserving "current first DESC" then any prev-only.
+  const currentMap = new Map(current.map((c) => [c.categoryId, c]));
+  const previousMap = new Map(previous.map((c) => [c.categoryId, c]));
+
+  const orderedIds: string[] = [];
+  for (const c of current) orderedIds.push(c.categoryId);
+  for (const p of previous) {
+    if (!currentMap.has(p.categoryId)) orderedIds.push(p.categoryId);
+  }
+
+  const meta = (id: string) => currentMap.get(id) ?? previousMap.get(id)!;
+
+  const currentOut: CategoryTotal[] = orderedIds.map((id) => {
+    const c = currentMap.get(id);
+    if (c) return c;
+    const m = meta(id);
+    return {
+      categoryId: id,
+      name: m.name,
+      icon: m.icon,
+      color: m.color,
+      total: 0,
+      percentage: 0,
+    };
+  });
+  const previousOut: CategoryTotal[] = orderedIds.map((id) => {
+    const p = previousMap.get(id);
+    if (p) return p;
+    const m = meta(id);
+    return {
+      categoryId: id,
+      name: m.name,
+      icon: m.icon,
+      color: m.color,
+      total: 0,
+      percentage: 0,
+    };
+  });
+
+  return {
+    categories: orderedIds.map((id) => meta(id).name),
+    current: currentOut,
+    previous: previousOut,
+  };
+}
+
+/**
+ * Expense breakdown by category for an arbitrary (month, year), sorted DESC.
+ */
+export async function getCategoryMonthlyBreakdown(
+  userId: string,
+  month: number,
+  year: number,
+): Promise<CategoryTotal[]> {
+  const supabase = await createClient();
+
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id")
+    .eq("user_id", userId);
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      `
+      amount, category_id,
+      category:categories ( id, name, icon, color )
+      `,
+    )
+    .in("ledger_id", ledgerIds)
+    .eq("type", "expense")
+    .gte("txn_date", firstDayOfMonth(year, month))
+    .lte("txn_date", lastDayOfMonth(year, month));
+  if (error) throw new Error(error.message);
+
+  type Row = {
+    amount: string;
+    category_id: string | null;
+    category:
+      | { id: string; name: string; icon: string | null; color: string | null }
+      | { id: string; name: string; icon: string | null; color: string | null }[]
+      | null;
+  };
+
+  const totals = new Map<string, CategoryTotal>();
+  let grandTotal = 0;
+
+  for (const row of (data ?? []) as Row[]) {
+    const value = parseFloat(row.amount);
+    if (!Number.isFinite(value)) continue;
+    const cat = Array.isArray(row.category) ? row.category[0] : row.category;
+    const id = cat?.id ?? row.category_id ?? "uncategorised";
+    const name = cat?.name ?? "Uncategorised";
+    const icon = cat?.icon ?? "📦";
+    const color = cat?.color ?? "#6B7280";
+
+    grandTotal += value;
+    const existing = totals.get(id);
+    if (existing) {
+      existing.total += value;
+    } else {
+      totals.set(id, {
+        categoryId: id,
+        name,
+        icon,
+        color,
+        total: value,
+        percentage: 0,
+      });
+    }
+  }
+
+  const list = Array.from(totals.values());
+  for (const item of list) {
+    item.percentage = grandTotal > 0 ? (item.total / grandTotal) * 100 : 0;
+  }
+  list.sort((a, b) => b.total - a.total);
+  return list;
+}
+
 function emptyDashboardSummary(): DashboardSummary {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;

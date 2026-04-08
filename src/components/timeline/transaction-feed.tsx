@@ -221,77 +221,95 @@ export function TransactionFeed({
         />
       </div>
 
-      {/* Summary strip */}
-      <div className="mb-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-white/60">
-        <span>
-          Income{" "}
-          <span className="text-[#10B981]">{formatMYR(summary.income)}</span>
-        </span>
-        <span className="text-white/20">·</span>
-        <span>
-          Expenses{" "}
-          <span className="text-[#F43F5E]">{formatMYR(summary.expense)}</span>
-        </span>
-        <span className="text-white/20">·</span>
-        <span>
-          Net{" "}
-          <span
-            className={
-              summary.net >= 0 ? "text-[#10B981]" : "text-[#F43F5E]"
-            }
+      {/* Summary card */}
+      <div className="glass-card mb-6 grid grid-cols-3 gap-3 rounded-2xl px-5 py-4 text-center">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-subtle-foreground">
+            Income
+          </p>
+          <p className="mt-1 text-sm font-semibold text-positive tabular-nums">
+            {formatMYR(summary.income)}
+          </p>
+        </div>
+        <div className="border-x border-border">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-subtle-foreground">
+            Expenses
+          </p>
+          <p className="mt-1 text-sm font-semibold text-negative tabular-nums">
+            {formatMYR(summary.expense)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-subtle-foreground">
+            Net
+          </p>
+          <p
+            className={`mt-1 text-sm font-semibold tabular-nums ${
+              summary.net >= 0 ? "text-positive" : "text-negative"
+            }`}
           >
             {formatMYR(summary.net)}
-          </span>
-        </span>
+          </p>
+        </div>
       </div>
 
       {loadingMonth && (
-        <p className="mb-4 text-center text-xs text-white/40">Loading…</p>
+        <p className="mb-4 text-center text-xs text-subtle-foreground">
+          Loading…
+        </p>
       )}
 
       {transactions.length === 0 && !loadingMonth ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#0F2044]/50 px-6 py-16 text-center">
-          <h2 className="text-base font-medium text-white">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/60 px-6 py-16 text-center">
+          <h2 className="text-base font-semibold text-foreground">
             No transactions in {MONTH_NAMES[month - 1]} {year}
           </h2>
-          <p className="mt-1 text-sm text-white/50">Tap + to add one</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Tap + to add one
+          </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
-          {groups.map((g) => {
-            // Daily total: + income - expense (signed)
-            let dailyNet = 0;
-            for (const t of g.transactions) {
-              const v = parseFloat(t.amount);
-              if (!Number.isFinite(v)) continue;
-              if (t.type === "income") dailyNet += v;
-              else if (t.type === "expense") dailyNet -= v;
-            }
-            return (
-              <div key={g.date}>
-                <div className="mb-2 flex items-center gap-3">
-                  <p className="text-xs font-medium text-white/60">
-                    {g.label}
-                  </p>
-                  <div className="h-px flex-1 bg-white/10" />
-                  <p className="text-xs text-white/40">
-                    {dailyNet >= 0 ? "+" : "−"}
-                    {formatMYR(Math.abs(dailyNet))}
-                  </p>
+        <div className="glass-card rounded-2xl p-3 sm:p-4">
+          <div className="flex flex-col gap-6">
+            {groups.map((g) => {
+              // Daily total: + income - expense (signed)
+              let dailyNet = 0;
+              for (const t of g.transactions) {
+                const v = parseFloat(t.amount);
+                if (!Number.isFinite(v)) continue;
+                if (t.type === "income") dailyNet += v;
+                else if (t.type === "expense") dailyNet -= v;
+              }
+              return (
+                <div key={g.date}>
+                  <div className="mb-2 flex items-center gap-3 px-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {g.label}
+                    </p>
+                    <div className="h-px flex-1 bg-border" />
+                    <p
+                      className={`text-xs font-medium tabular-nums ${
+                        dailyNet >= 0 ? "text-positive" : "text-negative"
+                      }`}
+                    >
+                      {dailyNet >= 0 ? "+" : "−"}
+                      {formatMYR(Math.abs(dailyNet))}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {g.transactions.map((t) => (
+                      <TransactionRow
+                        key={t.id}
+                        transaction={t}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  {g.transactions.map((t) => (
-                    <TransactionRow
-                      key={t.id}
-                      transaction={t}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 

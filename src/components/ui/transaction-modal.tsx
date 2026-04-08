@@ -30,17 +30,17 @@ const TYPE_OPTIONS: {
   {
     id: "income",
     label: "Income",
-    active: "bg-[#10B981] border-[#10B981] text-white",
+    active: "bg-positive border-positive text-white",
   },
   {
     id: "expense",
     label: "Expense",
-    active: "bg-[#F43F5E] border-[#F43F5E] text-white",
+    active: "bg-negative border-negative text-white",
   },
   {
     id: "transfer",
     label: "Transfer",
-    active: "bg-[#3B82F6] border-[#3B82F6] text-white",
+    active: "bg-accent border-accent text-white",
   },
 ];
 
@@ -53,7 +53,6 @@ function evaluateAmount(input: string): number {
   // Reject leading operators that aren't a unary minus we don't support.
   if (/[+\-*/]{2,}/.test(cleaned)) return NaN;
   try {
-    // eslint-disable-next-line no-new-func
     const value = Function(`"use strict"; return (${cleaned});`)();
     return typeof value === "number" && Number.isFinite(value) ? value : NaN;
   } catch {
@@ -238,7 +237,7 @@ export function TransactionModal({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
       />
 
       {/* Sheet / Modal */}
@@ -246,15 +245,15 @@ export function TransactionModal({
         role="dialog"
         aria-modal="true"
         className={[
-          "absolute left-0 right-0 bottom-0 mx-auto w-full max-w-lg rounded-t-2xl bg-[#162032] p-6 shadow-2xl",
+          "glass-card-strong absolute left-0 right-0 bottom-0 mx-auto w-full max-w-lg rounded-t-3xl p-6",
           "transition-transform duration-300 ease-out",
           open ? "translate-y-0" : "translate-y-full",
-          "md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:rounded-2xl",
+          "md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:rounded-3xl",
           open ? "md:translate-y-[-50%]" : "md:translate-y-[100%]",
         ].join(" ")}
       >
         {/* Drag indicator on mobile */}
-        <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-white/20 md:hidden" />
+        <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-border-strong md:hidden" />
 
         {/* Amount */}
         <div className="mb-6 text-center">
@@ -264,10 +263,10 @@ export function TransactionModal({
             value={amountInput}
             onChange={(e) => setAmountInput(e.target.value)}
             placeholder="RM 0.00"
-            className="w-full bg-transparent text-center text-4xl font-semibold tracking-tight text-white placeholder:text-white/30 outline-none"
+            className="w-full bg-transparent text-center text-[44px] font-semibold tracking-tight text-foreground tabular-nums placeholder:text-subtle-foreground outline-none"
           />
           {amountInput && !amountValid && (
-            <p className="mt-1 text-xs text-[#F43F5E]">Enter a valid amount</p>
+            <p className="mt-1 text-xs text-negative">Enter a valid amount</p>
           )}
         </div>
 
@@ -281,10 +280,10 @@ export function TransactionModal({
                 type="button"
                 onClick={() => setType(opt.id)}
                 className={[
-                  "rounded-full border px-3 py-2 text-sm font-medium transition-colors",
+                  "cursor-pointer rounded-full border px-3 py-2 text-sm font-medium transition-colors duration-200",
                   isActive
                     ? opt.active
-                    : "border-white/15 bg-transparent text-white/70 hover:bg-white/5",
+                    : "border-border bg-surface-muted text-muted-foreground hover:text-foreground",
                 ].join(" ")}
               >
                 {opt.label}
@@ -295,11 +294,11 @@ export function TransactionModal({
 
         {/* Category grid */}
         <div className="mb-5">
-          <p className="mb-2 text-xs uppercase tracking-wide text-white/50">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-subtle-foreground">
             Category
           </p>
           {categoriesLoading ? (
-            <p className="text-sm text-white/50">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : (
             <div className="flex gap-2 overflow-x-auto pb-2">
               {visibleCategories.map((c) => {
@@ -310,10 +309,10 @@ export function TransactionModal({
                     type="button"
                     onClick={() => setCategoryId(c.id)}
                     className={[
-                      "flex shrink-0 items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm transition-colors",
+                      "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm transition-colors duration-200",
                       isSelected
-                        ? "bg-white/5 text-white"
-                        : "border-white/10 bg-transparent text-white/70 hover:bg-white/5",
+                        ? "bg-surface-muted text-foreground"
+                        : "border-border bg-transparent text-muted-foreground hover:bg-surface-muted hover:text-foreground",
                     ].join(" ")}
                     style={
                       isSelected && c.color
@@ -327,7 +326,7 @@ export function TransactionModal({
                 );
               })}
               {visibleCategories.length === 0 && (
-                <p className="text-sm text-white/40">
+                <p className="text-sm text-subtle-foreground">
                   No categories — visit /api/seed in dev to seed defaults.
                 </p>
               )}
@@ -337,7 +336,7 @@ export function TransactionModal({
 
         {/* Payment method */}
         <div className="mb-5">
-          <p className="mb-2 text-xs uppercase tracking-wide text-white/50">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-subtle-foreground">
             Payment
           </p>
           <div className="grid grid-cols-4 gap-2">
@@ -349,10 +348,10 @@ export function TransactionModal({
                   type="button"
                   onClick={() => setPaymentMethod(m.id)}
                   className={[
-                    "rounded-full border px-2 py-1.5 text-xs font-medium transition-colors",
+                    "cursor-pointer rounded-full border px-2 py-1.5 text-xs font-medium transition-colors duration-200",
                     active
-                      ? "border-[#10B981] bg-[#10B981]/15 text-white"
-                      : "border-white/10 bg-transparent text-white/70 hover:bg-white/5",
+                      ? "border-primary bg-[var(--positive-soft)] text-foreground"
+                      : "border-border bg-surface-muted text-muted-foreground hover:text-foreground",
                   ].join(" ")}
                 >
                   {m.label}
@@ -364,11 +363,13 @@ export function TransactionModal({
 
         {/* Date */}
         <div className="mb-5 flex items-center justify-between">
-          <p className="text-xs uppercase tracking-wide text-white/50">Date</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-subtle-foreground">
+            Date
+          </p>
           <button
             type="button"
             onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-            className="rounded-md border border-white/10 bg-[#1E2D45] px-3 py-1.5 text-sm text-white hover:bg-white/5"
+            className="cursor-pointer rounded-lg border border-border bg-surface-muted px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-surface-strong"
           >
             {formatDateLabel(txnDate)}
           </button>
@@ -389,12 +390,12 @@ export function TransactionModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Add a note..."
-            className="w-full rounded-md border border-[#2E4060] bg-[#1E2D45] px-3 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/40"
+            className="w-full rounded-xl border border-border bg-surface-muted px-3.5 py-2.5 text-sm text-foreground placeholder:text-subtle-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-[var(--ring)]"
           />
         </div>
 
         {error && (
-          <p className="mb-3 text-sm text-[#F43F5E]" role="alert">
+          <p className="mb-3 text-sm text-negative" role="alert">
             {error}
           </p>
         )}
@@ -405,7 +406,7 @@ export function TransactionModal({
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-[#10B981] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#059669] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-fg shadow-sm transition-colors duration-200 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting && (
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -421,7 +422,7 @@ export function TransactionModal({
               type="button"
               onClick={handleDelete}
               disabled={deleting}
-              className="w-full rounded-md border border-[#F43F5E] px-4 py-3 text-sm font-semibold text-[#F43F5E] transition-colors hover:bg-[#F43F5E]/10 disabled:opacity-50"
+              className="w-full cursor-pointer rounded-xl border border-negative px-4 py-3 text-sm font-semibold text-negative transition-colors duration-200 hover:bg-[var(--negative-soft)] disabled:opacity-50"
             >
               {deleting ? "Deleting..." : "Delete"}
             </button>

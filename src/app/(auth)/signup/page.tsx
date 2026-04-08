@@ -69,18 +69,21 @@ export default function SignupPage() {
   return (
     <div className="w-full max-w-md animate-fade-in">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-white">
-          Flow<span className="text-[#10B981]">Trace</span>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          Flow<span className="text-primary">Trace</span>
         </h1>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-muted-foreground">
           Create your account
         </p>
       </div>
 
-      <div className="rounded-xl bg-[#162032] p-8 shadow-xl ring-1 ring-white/5">
+      <div className="glass-card-strong rounded-2xl p-8">
         {success ? (
           <div className="flex flex-col gap-4 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#10B981]/15 text-[#10B981]">
+            <div
+              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-primary"
+              style={{ background: "var(--positive-soft)" }}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -95,17 +98,17 @@ export default function SignupPage() {
                 <path d="M4 12.5l5 5L20 6.5" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Check your email
             </h2>
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-muted-foreground">
               We sent a confirmation link to{" "}
-              <span className="font-medium text-white">{email}</span>. Click
-              the link to activate your account.
+              <span className="font-medium text-foreground">{email}</span>.
+              Click the link to activate your account.
             </p>
             <Link
               href="/login"
-              className="mt-2 text-sm text-[#10B981] hover:text-[#059669] transition-colors"
+              className="mt-2 text-sm font-medium text-primary transition-colors hover:text-primary-hover"
             >
               Back to sign in
             </Link>
@@ -164,7 +167,8 @@ export default function SignupPage() {
             {errorMsg && (
               <div
                 role="alert"
-                className="rounded-md border border-[#F43F5E]/40 bg-[#F43F5E]/10 px-3 py-2 text-sm text-[#F43F5E]"
+                className="rounded-lg border border-negative/40 px-3 py-2 text-sm text-negative"
+                style={{ background: "var(--negative-soft)" }}
               >
                 {errorMsg}
               </div>
@@ -174,11 +178,11 @@ export default function SignupPage() {
               {loading ? "Creating account..." : "Create account"}
             </Button>
 
-            <p className="text-center text-sm text-white/60">
+            <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link
                 href="/login"
-                className="text-[#10B981] hover:text-[#059669] transition-colors"
+                className="font-medium text-primary transition-colors hover:text-primary-hover"
               >
                 Sign in
               </Link>

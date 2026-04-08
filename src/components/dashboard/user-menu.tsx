@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -53,24 +54,27 @@ export function UserMenu({ email, fullName }: Props) {
         onClick={() => setOpen((v) => !v)}
         aria-label="Account menu"
         aria-expanded={open}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-[#10B981] text-sm font-semibold text-white hover:bg-[#059669] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
       >
         {initials}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#162032] shadow-xl">
-          <div className="px-4 py-3 text-xs">
-            <p className="text-white/40">Signed in as</p>
-            <p className="mt-0.5 truncate text-white/80">{email}</p>
+        <div className="glass-card-strong absolute right-0 top-12 z-40 w-60 overflow-hidden rounded-2xl">
+          <div className="px-4 py-3">
+            <p className="text-[11px] uppercase tracking-wide text-subtle-foreground">
+              Signed in as
+            </p>
+            <p className="mt-0.5 truncate text-sm text-foreground">{email}</p>
           </div>
-          <div className="h-px bg-white/10" />
+          <div className="h-px bg-border" />
           <button
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="block w-full px-4 py-3 text-left text-sm text-white hover:bg-white/5 disabled:opacity-60"
+            className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-surface-muted disabled:opacity-60"
           >
+            <LogOut className="h-4 w-4 text-muted-foreground" />
             {signingOut ? "Signing out..." : "Sign out"}
           </button>
         </div>

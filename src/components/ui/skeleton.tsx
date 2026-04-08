@@ -6,7 +6,7 @@ export function Skeleton({
 }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={["animate-pulse bg-white/10", className ?? ""].join(" ")}
+      className={["animate-pulse bg-surface-muted", className ?? ""].join(" ")}
       {...rest}
     />
   );
@@ -33,7 +33,7 @@ export function SkeletonTimeline() {
         <div key={g}>
           <div className="mb-2 flex items-center gap-3">
             <Skeleton className="h-3 w-16 rounded" />
-            <div className="h-px flex-1 bg-white/10" />
+            <div className="h-px flex-1 bg-surface-muted" />
             <Skeleton className="h-3 w-12 rounded" />
           </div>
           <div className="flex flex-col gap-2">

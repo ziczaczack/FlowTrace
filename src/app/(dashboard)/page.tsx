@@ -11,6 +11,7 @@ import { NetFlowChart } from "@/components/charts/net-flow-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { UserMenu } from "@/components/dashboard/user-menu";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DashboardFab } from "./dashboard-client";
 
 function greeting(): string {
@@ -72,17 +73,25 @@ export default async function DashboardPage() {
     null;
 
   return (
-    <div className="px-4 py-6 sm:px-6 sm:py-8">
+    <div className="px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
-        <header className="mb-6 flex items-start justify-between gap-4">
+        <header className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              {greeting()}, {firstName(user)}
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-subtle-foreground">
+              {todayLabel()}
+            </p>
+            <h1 className="mt-1 text-[28px] font-semibold tracking-tight text-foreground sm:text-[32px]">
+              {greeting()},{" "}
+              <span className="text-primary">{firstName(user)}</span>
             </h1>
-            <p className="mt-1 text-sm text-white/50">{todayLabel()}</p>
           </div>
-          <UserMenu email={user.email ?? ""} fullName={fullName} />
+          <div className="flex items-center gap-2">
+            <div className="md:hidden">
+              <ThemeToggle />
+            </div>
+            <UserMenu email={user.email ?? ""} fullName={fullName} />
+          </div>
         </header>
 
         {isEmpty ? (

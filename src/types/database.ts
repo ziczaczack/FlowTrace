@@ -90,15 +90,22 @@ export interface CategoryTotal {
   percentage: number;
 }
 
+export interface AnomalyItem {
+  categoryName: string;
+  currentSpend: number;
+  average: number;
+  percentageOver: number;
+}
+
 export interface MonthlyReport {
   id: string;
-  user_id: string;
+  userId: string;
   year: number;
   month: number;
-  total_income: string | null;
-  total_expense: string | null;
-  net_flow: string | null;
-  category_breakdown: unknown;
-  anomalies: unknown;
-  generated_at: string;
+  totalIncome: number;
+  totalExpense: number;
+  netFlow: number;
+  categoryBreakdown: CategoryTotal[];
+  anomalies: AnomalyItem[];
+  generatedAt: string;
 }

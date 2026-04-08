@@ -35,12 +35,12 @@ function amountDisplay(t: Transaction): {
   const value = parseFloat(t.amount);
   const formatted = formatMYR(Number.isFinite(value) ? value : 0);
   if (t.type === "income") {
-    return { text: `+${formatted}`, className: "text-[#10B981]" };
+    return { text: `+${formatted}`, className: "text-positive" };
   }
   if (t.type === "expense") {
-    return { text: `−${formatted}`, className: "text-[#F43F5E]" };
+    return { text: `−${formatted}`, className: "text-negative" };
   }
-  return { text: `→${formatted}`, className: "text-white" };
+  return { text: `→${formatted}`, className: "text-foreground" };
 }
 
 export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
@@ -102,16 +102,19 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
   return (
     <div
       className={[
-        "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
-        "hover:bg-white/5",
+        "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200",
+        "hover:bg-surface-muted",
         removed ? "pointer-events-none opacity-0" : "opacity-100",
       ].join(" ")}
       style={{ transitionDuration: removed ? "300ms" : undefined }}
     >
       {/* Icon */}
       <div
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[18px]"
-        style={{ backgroundColor: `${color}33` }}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[18px]"
+        style={{
+          backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+          color,
+        }}
         aria-hidden
       >
         {icon}
@@ -119,13 +122,13 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
 
       {confirming ? (
         <div className="flex flex-1 items-center justify-between gap-3">
-          <p className="text-sm text-white">Delete this transaction?</p>
+          <p className="text-sm text-foreground">Delete this transaction?</p>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setConfirming(false)}
               disabled={deleting}
-              className="rounded-md px-2 py-1 text-xs font-medium text-white/60 hover:bg-white/5 disabled:opacity-50"
+              className="cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-muted disabled:opacity-50"
             >
               Cancel
             </button>
@@ -133,7 +136,7 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
               type="button"
               onClick={handleConfirmDelete}
               disabled={deleting}
-              className="rounded-md px-2 py-1 text-xs font-semibold text-[#F43F5E] hover:bg-[#F43F5E]/10 disabled:opacity-50"
+              className="cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold text-negative transition-colors hover:bg-[var(--negative-soft)] disabled:opacity-50"
             >
               {deleting ? "Deleting..." : "Delete"}
             </button>
@@ -158,27 +161,34 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
         >
           {/* Middle */}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">{name}</p>
-            <p className="truncate text-xs text-white/50">
+            <p className="truncate text-sm font-medium text-foreground">
+              {name}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
               {transaction.note ? (
                 <>
-                  <span className="text-white/50">{transaction.note}</span>
+                  <span>{transaction.note}</span>
                   {paymentLabel && (
-                    <span className="text-white/40"> · {paymentLabel}</span>
+                    <span className="text-subtle-foreground">
+                      {" "}
+                      · {paymentLabel}
+                    </span>
                   )}
                 </>
               ) : paymentLabel ? (
-                <span className="text-white/40">{paymentLabel}</span>
+                <span className="text-subtle-foreground">{paymentLabel}</span>
               ) : null}
             </p>
           </div>
 
           {/* Right */}
           <div className="shrink-0 text-right">
-            <p className={`text-[15px] font-semibold ${amt.className}`}>
+            <p
+              className={`text-[15px] font-semibold tabular-nums ${amt.className}`}
+            >
               {amt.text}
             </p>
-            <p className="text-[11px] text-white/40">
+            <p className="text-[11px] text-subtle-foreground tabular-nums">
               {formatTime(transaction.created_at)}
             </p>
           </div>
@@ -191,7 +201,7 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
               e.stopPropagation();
               setConfirming(true);
             }}
-            className="ml-1 hidden rounded p-1 text-white/40 opacity-0 transition-opacity hover:bg-white/5 hover:text-white/70 group-hover:opacity-100 md:inline-flex"
+            className="ml-1 hidden cursor-pointer rounded-lg p-1.5 text-subtle-foreground opacity-0 transition-opacity duration-200 hover:bg-surface-strong hover:text-foreground group-hover:opacity-100 md:inline-flex"
           >
             <Trash2 className="h-4 w-4" />
           </button>

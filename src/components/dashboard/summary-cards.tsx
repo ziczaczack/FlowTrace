@@ -42,27 +42,35 @@ export function SummaryCards({ totalBalance, income, expense }: Props) {
   const expenseVal = useCountUp(expense);
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div className="rounded-2xl border border-white/10 bg-[#0F2044] p-5">
-        <p className="text-xs uppercase tracking-wide text-white/50">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="glass-card group relative overflow-hidden rounded-2xl p-5 transition-shadow duration-200 hover:shadow-[var(--shadow-elevated)]">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"
+        />
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
           Total balance
         </p>
-        <p className="mt-2 text-2xl font-semibold text-white">
+        <p className="mt-2.5 text-[26px] font-semibold tracking-tight text-foreground tabular-nums">
           {formatMYR(balanceVal)}
         </p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-[#0F2044] p-5">
-        <p className="text-xs uppercase tracking-wide text-white/50">Income</p>
-        <p className="mt-2 flex items-center gap-1 text-2xl font-semibold text-[#10B981]">
+      <div className="glass-card relative overflow-hidden rounded-2xl p-5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
+          Income · this month
+        </p>
+        <p className="mt-2.5 flex items-center gap-1.5 text-[26px] font-semibold tracking-tight text-positive tabular-nums">
           <ArrowUpRight className="h-5 w-5" aria-hidden />
           {formatMYR(incomeVal)}
         </p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-[#0F2044] p-5">
-        <p className="text-xs uppercase tracking-wide text-white/50">Expenses</p>
-        <p className="mt-2 flex items-center gap-1 text-2xl font-semibold text-[#F43F5E]">
+      <div className="glass-card relative overflow-hidden rounded-2xl p-5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
+          Expenses · this month
+        </p>
+        <p className="mt-2.5 flex items-center gap-1.5 text-[26px] font-semibold tracking-tight text-negative tabular-nums">
           <ArrowDownRight className="h-5 w-5" aria-hidden />
           {formatMYR(expenseVal)}
         </p>

@@ -123,10 +123,10 @@ Update this section as features are completed:
 - [x] Transaction CRUD
 - [x] Dashboard page
 - [x] Timeline page
-- [ ] Analytics page
-- [ ] Monthly report logic
-- [ ] Dark mode
-- [ ] PDF export
+- [x] Analytics page
+- [x] Monthly report logic
+- [x] Dark mode
+- [x] CSV export
 
 ## Commands
 npm run dev      — start dev server at localhost:3000

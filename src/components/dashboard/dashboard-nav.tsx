@@ -9,6 +9,7 @@ import {
   Settings,
   type LucideIcon,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -29,10 +30,32 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
 
   if (variant === "sidebar") {
     return (
-      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-60 flex-col border-r border-[#2E4060] bg-[#0F2044] px-4 py-6 md:flex">
-        <div className="mb-8 px-2 text-2xl font-semibold tracking-tight text-white">
-          FlowTrace
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-64 flex-col border-r border-border bg-surface/70 px-5 py-7 backdrop-blur-xl md:flex">
+        <div className="mb-10 flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground"
+          >
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-fg shadow-sm">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden
+              >
+                <path d="M3 17l6-6 4 4 8-8" />
+                <path d="M14 7h7v7" />
+              </svg>
+            </span>
+            FlowTrace
+          </Link>
+          <ThemeToggle />
         </div>
+
         <nav className="flex flex-col gap-1">
           {ITEMS.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
@@ -40,37 +63,48 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
               <Link
                 key={href}
                 href={href}
+                aria-current={active ? "page" : undefined}
                 className={[
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200 cursor-pointer",
                   active
-                    ? "bg-[#10B981] text-white"
-                    : "text-white/60 hover:bg-white/5 hover:text-white/90",
+                    ? "bg-primary text-primary-fg shadow-sm"
+                    : "text-muted-foreground hover:bg-surface-muted hover:text-foreground",
                 ].join(" ")}
               >
-                <Icon className="h-5 w-5" aria-hidden />
+                <Icon className="h-[18px] w-[18px]" aria-hidden />
                 {label}
               </Link>
             );
           })}
         </nav>
+
+        <div className="mt-auto rounded-xl border border-border bg-surface-muted/60 p-4 text-xs text-muted-foreground">
+          <p className="font-medium text-foreground">FlowTrace · MVP</p>
+          <p className="mt-1 leading-relaxed">
+            Tracking made calm. Built with care for everyday investors.
+          </p>
+        </div>
       </aside>
     );
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-4 border-t border-[#2E4060] bg-[#0F2044] md:hidden">
+    <nav className="fixed bottom-3 left-3 right-3 z-30 grid grid-cols-4 rounded-2xl border border-border bg-surface/85 px-1 py-1 shadow-[var(--shadow-elevated)] backdrop-blur-xl md:hidden">
       {ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
           <Link
             key={href}
             href={href}
+            aria-current={active ? "page" : undefined}
             className={[
-              "flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
-              active ? "text-[#10B981]" : "text-white/50 hover:text-white/80",
+              "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors duration-200 cursor-pointer",
+              active
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground",
             ].join(" ")}
           >
-            <Icon className="h-5 w-5" aria-hidden />
+            <Icon className="h-[18px] w-[18px]" aria-hidden />
             {label}
           </Link>
         );

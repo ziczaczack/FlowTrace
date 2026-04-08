@@ -35,10 +35,10 @@ export default async function TimelinePage({
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-3xl">
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Timeline
           </h1>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-muted-foreground">
             Every transaction across all ledgers
           </p>
         </header>
