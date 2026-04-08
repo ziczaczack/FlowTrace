@@ -1,8 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Category, Transaction, TransactionType } from "@/types/database";
+import type {
+  Category,
+  ExtractedReceipt,
+  PaymentMethod,
+  Transaction,
+  TransactionType,
+} from "@/types/database";
 import type { NewTransaction } from "@/types/forms";
+import { ReceiptScanner } from "@/components/ui/receipt-scanner";
+import { Toast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 
 type Mode = "create" | "edit";
 
@@ -118,6 +127,14 @@ export function TransactionModal({
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
+  // Batch scan queue: when N receipts are scanned at once, we apply the
+  // first to the form and stash the rest. After each save we shift to the
+  // next entry until the queue is drained — only then does the modal close.
+  const [scanQueue, setScanQueue] = useState<ExtractedReceipt[]>([]);
+  const [scanIndex, setScanIndex] = useState(0);
+  const [scanTotal, setScanTotal] = useState(0);
+  const { toast, showToast } = useToast();
 
   const dateInputRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -141,6 +158,12 @@ export function TransactionModal({
       setNote("");
     }
     setError(null);
+    // Drop any leftover scan queue when (re)opening — a fresh open should
+    // never inherit a half-consumed batch from a previous session.
+    setScanQueue([]);
+    setScanIndex(0);
+    setScanTotal(0);
+    setAutoFilled(false);
     // Auto-focus amount on open.
     requestAnimationFrame(() => amountRef.current?.focus());
   }, [open, initialData]);
@@ -172,7 +195,7 @@ export function TransactionModal({
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -191,6 +214,72 @@ export function TransactionModal({
 
   const canSave = amountValid && Boolean(categoryId) && !submitting;
 
+  function applyReceipt(data: ExtractedReceipt) {
+    if (data.amount != null && Number.isFinite(data.amount)) {
+      setAmountInput(String(data.amount));
+    } else {
+      setAmountInput("");
+    }
+    if (data.date) setTxnDate(data.date);
+    if (data.paymentMethod) {
+      const allowed: PaymentMethod[] = [
+        "cash",
+        "card",
+        "e-wallet",
+        "bank_transfer",
+      ];
+      if ((allowed as string[]).includes(data.paymentMethod)) {
+        setPaymentMethod(data.paymentMethod);
+      }
+    }
+    setNote(data.note ?? "");
+    if (data.category) {
+      const target = data.category.trim().toLowerCase();
+      const match = categories.find(
+        (c) => c.name.trim().toLowerCase() === target,
+      );
+      if (match) setCategoryId(match.id);
+    }
+    setType("expense");
+    setAutoFilled(true);
+    setTimeout(() => setAutoFilled(false), 3000);
+  }
+
+  function handleExtracted(items: ExtractedReceipt[]) {
+    if (items.length === 0) return;
+    const [first, ...rest] = items;
+    applyReceipt(first);
+    setScanQueue(rest);
+    setScanIndex(1);
+    setScanTotal(items.length);
+    showToast(
+      items.length > 1
+        ? `${items.length} receipts scanned`
+        : "Receipt scanned",
+      "success",
+    );
+  }
+
+  function advanceQueue() {
+    setScanQueue((prev) => {
+      if (prev.length === 0) return prev;
+      const [next, ...rest] = prev;
+      applyReceipt(next);
+      setScanIndex((i) => i + 1);
+      return rest;
+    });
+  }
+
+  function clearQueue() {
+    setScanQueue([]);
+    setScanIndex(0);
+    setScanTotal(0);
+  }
+
+  function handleScanError(message: string) {
+    showToast(message, "error");
+  }
+
   async function handleSave() {
     if (!canSave) return;
     setSubmitting(true);
@@ -204,12 +293,24 @@ export function TransactionModal({
         note: note.trim() || undefined,
         txnDate,
       });
-      onClose();
+      // If there are still receipts queued from a batch scan, advance to
+      // the next one instead of closing the modal.
+      if (scanQueue.length > 0) {
+        advanceQueue();
+      } else {
+        clearQueue();
+        onClose();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleClose() {
+    clearQueue();
+    onClose();
   }
 
   async function handleDelete() {
@@ -218,7 +319,7 @@ export function TransactionModal({
     setError(null);
     try {
       await onDelete(initialData.id);
-      onClose();
+      handleClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
     } finally {
@@ -236,7 +337,7 @@ export function TransactionModal({
     >
       {/* Backdrop */}
       <div
-        onClick={onClose}
+        onClick={handleClose}
         className="absolute inset-0 bg-black/55 backdrop-blur-sm"
       />
 
@@ -255,6 +356,34 @@ export function TransactionModal({
         {/* Drag indicator on mobile */}
         <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-border-strong md:hidden" />
 
+        {/* Header actions: receipt scanner + close */}
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          <ReceiptScanner
+            onExtracted={handleExtracted}
+            onError={handleScanError}
+          />
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/60 text-foreground transition-colors hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
         {/* Amount */}
         <div className="mb-6 text-center">
           <input
@@ -268,6 +397,27 @@ export function TransactionModal({
           {amountInput && !amountValid && (
             <p className="mt-1 text-xs text-negative">Enter a valid amount</p>
           )}
+          <div className="mt-1 flex items-center justify-center gap-2">
+            {autoFilled && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-500 transition-opacity duration-300">
+                ✓ Auto-filled
+              </span>
+            )}
+            {scanTotal > 1 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+                Receipt {scanIndex} of {scanTotal}
+              </span>
+            )}
+            {scanQueue.length > 0 && (
+              <button
+                type="button"
+                onClick={advanceQueue}
+                className="cursor-pointer rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+              >
+                Skip →
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Type selector */}
@@ -414,9 +564,14 @@ export function TransactionModal({
                 <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" />
               </svg>
             )}
-            {mode === "edit" ? "Save changes" : "Save"}
+            {mode === "edit"
+              ? "Save changes"
+              : scanQueue.length > 0
+                ? "Save & next"
+                : "Save"}
           </button>
 
+          <Toast {...toast} />
           {mode === "edit" && initialData && onDelete && (
             <button
               type="button"

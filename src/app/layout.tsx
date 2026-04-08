@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -42,9 +41,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <Script id="theme-boot" strategy="beforeInteractive">
-          {themeBootScript}
-        </Script>
+        <script
+          id="theme-boot"
+          dangerouslySetInnerHTML={{ __html: themeBootScript }}
+        />
       </head>
       <body className="min-h-full bg-bg text-foreground font-sans">
         {children}

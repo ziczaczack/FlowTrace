@@ -14,7 +14,8 @@
       "Bash(npm install:*)",
       "Bash(ls *.config*)",
       "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"fintech personal finance dashboard minimal modern light dark mode\" --design-system -p \"FlowTrace\")",
-      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"fintech personal finance dashboard minimal modern\" --design-system -p \"FlowTrace\")"
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"fintech personal finance dashboard minimal modern\" --design-system -p \"FlowTrace\")",
+      "Bash(ls:*)"
     ]
   }
 }

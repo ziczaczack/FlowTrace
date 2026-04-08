@@ -97,6 +97,18 @@ export interface AnomalyItem {
   percentageOver: number;
 }
 
+export interface ExtractedReceipt {
+  amount: number | null;
+  merchant: string | null;
+  date: string | null;
+  category: string | null;
+  paymentMethod: string | null;
+  note: string | null;
+  confidence: "high" | "medium" | "low";
+  rawText: string | null;
+  error?: string;
+}
+
 export interface MonthlyReport {
   id: string;
   userId: string;

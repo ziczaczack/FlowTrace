@@ -87,6 +87,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY  — Supabase anon/public key
 Both are prefixed NEXT_PUBLIC_ and safe to use in client components.
 Never use the service_role key in client-side code.
 
+### AI integrations
+Google Gemini 1.5 Flash is used for receipt scanning (vision + extraction).
+Client: src/lib/gemini.ts
+API route: src/app/api/receipt/scan/route.ts
+Environment variable: GOOGLE_GEMINI_API_KEY (server-side only)
+
+Do not use Gemini for anything other than receipt scanning.
+Do not expose GOOGLE_GEMINI_API_KEY to the browser.
+
 ## Coding conventions
 - All components are functional, typed with TypeScript. No class components.
 - File naming: kebab-case for files (transaction-row.tsx), PascalCase for
@@ -127,6 +136,7 @@ Update this section as features are completed:
 - [x] Monthly report logic
 - [x] Dark mode
 - [x] CSV export
+- [x] Receipt Scanning (Gemini Vision)
 
 ## Commands
 npm run dev      — start dev server at localhost:3000
