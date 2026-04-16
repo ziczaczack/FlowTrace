@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, TrendingUp, TrendingDown } from "lucide-react";
 
 type Props = {
   totalBalance: number;
@@ -36,14 +36,20 @@ function useCountUp(target: number, durationMs = 700): number {
   return value;
 }
 
-export function SummaryCards({ totalBalance, income, expense }: Props) {
+export function SummaryCards({ totalBalance, income, expense, net }: Props) {
   const balanceVal = useCountUp(totalBalance);
   const incomeVal = useCountUp(income);
   const expenseVal = useCountUp(expense);
+  const netVal = useCountUp(Math.abs(net));
+
+  const savingsRate =
+    income > 0 ? Math.round(((income - expense) / income) * 100) : null;
+  const isPositiveNet = net >= 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <div className="glass-card group relative overflow-hidden rounded-2xl p-5 transition-shadow duration-200 hover:shadow-[var(--shadow-elevated)]">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* Total Balance */}
+      <div className="glass-card group relative overflow-hidden rounded-2xl p-5 transition-shadow duration-200 hover:shadow-[var(--shadow-elevated)] col-span-2 sm:col-span-1">
         <div
           aria-hidden
           className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"
@@ -56,24 +62,59 @@ export function SummaryCards({ totalBalance, income, expense }: Props) {
         </p>
       </div>
 
+      {/* Income */}
       <div className="glass-card relative overflow-hidden rounded-2xl p-5">
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
           Income · this month
         </p>
-        <p className="mt-2.5 flex items-center gap-1.5 text-[26px] font-semibold tracking-tight text-positive tabular-nums">
-          <ArrowUpRight className="h-5 w-5" aria-hidden />
+        <p className="mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-positive tabular-nums">
+          <ArrowUpRight className="h-5 w-5 shrink-0" aria-hidden />
           {formatMYR(incomeVal)}
         </p>
       </div>
 
+      {/* Expenses */}
       <div className="glass-card relative overflow-hidden rounded-2xl p-5">
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
           Expenses · this month
         </p>
-        <p className="mt-2.5 flex items-center gap-1.5 text-[26px] font-semibold tracking-tight text-negative tabular-nums">
-          <ArrowDownRight className="h-5 w-5" aria-hidden />
+        <p className="mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-negative tabular-nums">
+          <ArrowDownRight className="h-5 w-5 shrink-0" aria-hidden />
           {formatMYR(expenseVal)}
         </p>
+      </div>
+
+      {/* Net / Savings Rate */}
+      <div className="glass-card relative overflow-hidden rounded-2xl p-5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
+          Net · this month
+        </p>
+        <p
+          className={`mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight tabular-nums ${
+            isPositiveNet ? "text-positive" : "text-negative"
+          }`}
+        >
+          {isPositiveNet ? (
+            <TrendingUp className="h-5 w-5 shrink-0" aria-hidden />
+          ) : (
+            <TrendingDown className="h-5 w-5 shrink-0" aria-hidden />
+          )}
+          {isPositiveNet ? "+" : "−"}
+          {formatMYR(netVal)}
+        </p>
+        {savingsRate !== null && (
+          <p
+            className={`mt-1 text-[11px] font-medium ${
+              savingsRate >= 20
+                ? "text-positive"
+                : savingsRate >= 0
+                  ? "text-muted-foreground"
+                  : "text-negative"
+            }`}
+          >
+            {savingsRate}% savings rate
+          </p>
+        )}
       </div>
     </div>
   );

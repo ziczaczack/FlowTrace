@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Search, X } from "lucide-react";
 import { Fab } from "@/components/ui/fab";
 import { TransactionModal } from "@/components/ui/transaction-modal";
 import { Toast } from "@/components/ui/toast";
@@ -49,6 +50,7 @@ export function TransactionFeed({
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingMonth, setLoadingMonth] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast, showToast } = useToast();
 
   // Re-sync if the server passes new initial data (e.g. via router.refresh).
@@ -205,20 +207,55 @@ export function TransactionFeed({
     return { income, expense, net: income - expense };
   }, [transactions]);
 
+  const filteredTransactions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return transactions;
+    return transactions.filter((t) => {
+      const inNote = t.note?.toLowerCase().includes(q);
+      const inCategory = t.category?.name?.toLowerCase().includes(q);
+      const inAmount = t.amount.includes(q);
+      return inNote || inCategory || inAmount;
+    });
+  }, [transactions, searchQuery]);
+
   const groups = useMemo(
-    () => groupTransactionsByDate(transactions),
-    [transactions],
+    () => groupTransactionsByDate(filteredTransactions),
+    [filteredTransactions],
   );
 
   return (
     <>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <MonthSelector
           month={month}
           year={year}
           onChange={handleMonthChange}
           accountCreatedAt={accountCreatedAt}
         />
+        {/* Search */}
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle-foreground"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search…"
+            className="w-full rounded-xl border border-border bg-surface-muted/70 py-2 pl-9 pr-8 text-sm text-foreground outline-none transition-colors placeholder:text-subtle-foreground focus:border-primary focus:ring-2 focus:ring-[var(--ring)] sm:w-52"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-subtle-foreground hover:text-foreground cursor-pointer"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Summary card */}
@@ -259,14 +296,27 @@ export function TransactionFeed({
         </p>
       )}
 
-      {transactions.length === 0 && !loadingMonth ? (
+      {filteredTransactions.length === 0 && !loadingMonth ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/60 px-6 py-16 text-center">
-          <h2 className="text-base font-semibold text-foreground">
-            No transactions in {MONTH_NAMES[month - 1]} {year}
-          </h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Tap + to add one
-          </p>
+          {searchQuery ? (
+            <>
+              <h2 className="text-base font-semibold text-foreground">
+                No results for &ldquo;{searchQuery}&rdquo;
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Try a different keyword
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-base font-semibold text-foreground">
+                No transactions in {MONTH_NAMES[month - 1]} {year}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Tap + to add one
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="glass-card rounded-2xl p-3 sm:p-4">

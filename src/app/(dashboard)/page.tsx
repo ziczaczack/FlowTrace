@@ -9,6 +9,7 @@ import {
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { NetFlowChart } from "@/components/charts/net-flow-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
+import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { UserMenu } from "@/components/dashboard/user-menu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -50,18 +51,13 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const ledger = await getOrCreateDefaultLedger(user.id);
+  const now = new Date();
   const [summary, byCategory, monthTxns] = await Promise.all([
     getDashboardSummary(user.id),
     getCurrentMonthByCategory(user.id),
-    getTransactions(
-      ledger.id,
-      new Date().getMonth() + 1,
-      new Date().getFullYear(),
-    ),
+    getTransactions(ledger.id, now.getMonth() + 1, now.getFullYear()),
   ]);
 
-  // The dashboard considers itself empty when the user has never recorded
-  // a transaction in any timeframe — not just this month.
   const lifetimeFlow =
     summary.totalBalance !== 0 ||
     summary.last6Months.some((m) => m.income > 0 || m.expense > 0);
@@ -104,8 +100,11 @@ export default async function DashboardPage() {
               expense={summary.currentMonth.expense}
               net={summary.currentMonth.net}
             />
-            <NetFlowChart data={summary.last6Months} />
-            <CategoryDonutChart data={byCategory} />
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <NetFlowChart data={summary.last6Months} />
+              <CategoryDonutChart data={byCategory} />
+            </div>
+            <RecentTransactions transactions={monthTxns} />
           </div>
         )}
       </div>

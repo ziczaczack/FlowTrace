@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   getCategoryMonthlyBreakdown,
+  getCategoryBudgetOverview,
   getCurrentVsPreviousMonth,
   getLast12MonthsFlow,
 } from "@/lib/supabase/queries";
@@ -12,6 +13,7 @@ import {
 import { MonthlyReportCard } from "@/components/analytics/monthly-report-card";
 import { ComparisonBarChart } from "@/components/charts/comparison-bar-chart";
 import { CategoryBreakdown } from "@/components/analytics/category-breakdown";
+import { BudgetOverview } from "@/components/analytics/budget-overview";
 import { AnnualFlowChart } from "@/components/charts/annual-flow-chart";
 import { ExportButton } from "@/components/ui/export-button";
 
@@ -32,14 +34,13 @@ export default async function AnalyticsPage() {
   const prevPrevMonth = prevPrevDate.getMonth() + 1;
   const prevPrevYear = prevPrevDate.getFullYear();
 
-  const [annualFlow, comparison, breakdown] = await Promise.all([
+  const [annualFlow, comparison, breakdown, budgetItems] = await Promise.all([
     getLast12MonthsFlow(user.id),
     getCurrentVsPreviousMonth(user.id),
     getCategoryMonthlyBreakdown(user.id, currentMonth, currentYear),
+    getCategoryBudgetOverview(user.id, currentMonth, currentYear),
   ]);
 
-  // Try to use the cached report for last month; if missing, generate it
-  // server-side so the page renders with data on the first paint.
   let lastReport = await getReportFor(user.id, lastMonthYear, lastMonth);
   if (!lastReport) {
     try {
@@ -52,7 +53,6 @@ export default async function AnalyticsPage() {
       lastReport = null;
     }
   }
-  // Previous-previous month for the "vs prev" delta on the report card.
   const prevPrevReport = await getReportFor(
     user.id,
     prevPrevYear,
@@ -79,6 +79,7 @@ export default async function AnalyticsPage() {
             report={lastReport}
             previousReport={prevPrevReport}
           />
+          <BudgetOverview items={budgetItems} />
           <ComparisonBarChart data={comparison} />
           <CategoryBreakdown
             initialData={breakdown}

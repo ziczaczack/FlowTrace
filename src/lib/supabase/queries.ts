@@ -4,7 +4,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type {
+  Budget,
+  BudgetWithCategory,
   Category,
+  CategoryBudgetItem,
   CategoryTotal,
   Ledger,
   MonthlyFlow,
@@ -587,6 +590,98 @@ export async function getCategoryMonthlyBreakdown(
   }
   list.sort((a, b) => b.total - a.total);
   return list;
+}
+
+/**
+ * Fetch all budgets for a user with joined category metadata.
+ */
+export async function getBudgets(userId: string): Promise<BudgetWithCategory[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("budgets")
+    .select("*, category:categories ( id, name, icon, color )")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as BudgetWithCategory[];
+}
+
+/**
+ * Upsert a monthly budget for a category (create or update limit).
+ */
+export async function upsertBudget(
+  userId: string,
+  categoryId: string,
+  amountLimit: number,
+): Promise<Budget> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("budgets")
+    .upsert(
+      {
+        user_id: userId,
+        category_id: categoryId,
+        amount_limit: amountLimit,
+        period: "monthly",
+      },
+      { onConflict: "user_id,category_id,period" },
+    )
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Budget;
+}
+
+/**
+ * Delete a budget by its id.
+ */
+export async function deleteBudget(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("budgets").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Returns all expense categories joined with the user's current budget limits
+ * and their spending for the given month, for the budget overview UI.
+ * Only returns categories that have spending or a budget set.
+ */
+export async function getCategoryBudgetOverview(
+  userId: string,
+  month: number,
+  year: number,
+): Promise<CategoryBudgetItem[]> {
+  const [categories, budgets, spending] = await Promise.all([
+    getCategories(userId),
+    getBudgets(userId),
+    getCategoryMonthlyBreakdown(userId, month, year),
+  ]);
+
+  const budgetMap = new Map(budgets.map((b) => [b.category_id, b]));
+  const spendMap = new Map(spending.map((s) => [s.categoryId, s.total]));
+
+  const expenseCategories = categories.filter((c) => c.type === "expense");
+
+  return expenseCategories
+    .map((cat) => {
+      const budget = budgetMap.get(cat.id);
+      const currentSpend = spendMap.get(cat.id) ?? 0;
+      const budgetLimit = budget ? parseFloat(budget.amount_limit) : null;
+      const percentage =
+        budgetLimit && budgetLimit > 0
+          ? Math.min((currentSpend / budgetLimit) * 100, 999)
+          : 0;
+      return {
+        categoryId: cat.id,
+        categoryName: cat.name,
+        categoryIcon: cat.icon,
+        categoryColor: cat.color,
+        budgetId: budget?.id ?? null,
+        budgetLimit,
+        currentSpend,
+        percentage,
+      };
+    })
+    .filter((item) => item.currentSpend > 0 || item.budgetLimit !== null);
 }
 
 function emptyDashboardSummary(): DashboardSummary {

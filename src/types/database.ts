@@ -121,3 +121,18 @@ export interface MonthlyReport {
   anomalies: AnomalyItem[];
   generatedAt: string;
 }
+
+export interface BudgetWithCategory extends Budget {
+  category: Pick<Category, "id" | "name" | "icon" | "color"> | null;
+}
+
+export interface CategoryBudgetItem {
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  budgetId: string | null;
+  budgetLimit: number | null; // null = no budget set
+  currentSpend: number;
+  percentage: number; // currentSpend / budgetLimit * 100, capped at 999
+}
