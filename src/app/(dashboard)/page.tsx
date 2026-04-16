@@ -1,12 +1,16 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getCategoryBudgetOverview,
+  getCategoryMonthlyBreakdown,
   getCurrentMonthByCategory,
   getDashboardSummary,
   getOrCreateDefaultLedger,
   getTransactions,
 } from "@/lib/supabase/queries";
+import { computeInsights } from "@/lib/insights";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
+import { SmartInsights } from "@/components/dashboard/smart-insights";
 import { NetFlowChart } from "@/components/charts/net-flow-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
@@ -52,11 +56,35 @@ export default async function DashboardPage() {
 
   const ledger = await getOrCreateDefaultLedger(user.id);
   const now = new Date();
-  const [summary, byCategory, monthTxns] = await Promise.all([
-    getDashboardSummary(user.id),
-    getCurrentMonthByCategory(user.id),
-    getTransactions(ledger.id, now.getMonth() + 1, now.getFullYear()),
-  ]);
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const prevDate = new Date(currentYear, currentMonth - 2, 1);
+  const prevMonth = prevDate.getMonth() + 1;
+  const prevYear = prevDate.getFullYear();
+  const daysInPrevMonth = new Date(currentYear, currentMonth - 1, 0).getDate();
+
+  const [summary, byCategory, monthTxns, prevByCategory, budgetItems] =
+    await Promise.all([
+      getDashboardSummary(user.id),
+      getCurrentMonthByCategory(user.id),
+      getTransactions(ledger.id, currentMonth, currentYear),
+      getCategoryMonthlyBreakdown(user.id, prevMonth, prevYear),
+      getCategoryBudgetOverview(user.id, currentMonth, currentYear),
+    ]);
+
+  const previousMonthExpense = summary.last6Months.find(
+    (m) => m.month === prevMonth && m.year === prevYear,
+  )?.expense ?? 0;
+
+  const insights = computeInsights({
+    currentMonthExpense: summary.currentMonth.expense,
+    previousMonthExpense,
+    daysIntoMonth: now.getDate(),
+    daysInPreviousMonth: daysInPrevMonth,
+    currentByCategory: byCategory,
+    previousByCategory: prevByCategory,
+    budgetItems,
+  });
 
   const lifetimeFlow =
     summary.totalBalance !== 0 ||
@@ -100,6 +128,7 @@ export default async function DashboardPage() {
               expense={summary.currentMonth.expense}
               net={summary.currentMonth.net}
             />
+            <SmartInsights insights={insights} />
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <NetFlowChart data={summary.last6Months} />
               <CategoryDonutChart data={byCategory} />

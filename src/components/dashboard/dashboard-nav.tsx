@@ -79,7 +79,12 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
         </nav>
 
         <div className="mt-auto rounded-xl border border-border bg-surface-muted/60 p-4 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground">FlowTrace · MVP</p>
+          <p className="flex items-center justify-between font-medium text-foreground">
+            FlowTrace · MVP
+            <kbd className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              ⌘ K
+            </kbd>
+          </p>
           <p className="mt-1 leading-relaxed">
             Tracking made calm. Built with care for everyday investors.
           </p>

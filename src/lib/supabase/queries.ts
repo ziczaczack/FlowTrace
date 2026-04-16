@@ -684,6 +684,46 @@ export async function getCategoryBudgetOverview(
     .filter((item) => item.currentSpend > 0 || item.budgetLimit !== null);
 }
 
+/**
+ * Daily expense totals for a user over an inclusive date range.
+ * Returns a map of YYYY-MM-DD → total expense (in the range).
+ * Days with no expenses are omitted.
+ */
+export async function getDailyExpenseTotals(
+  userId: string,
+  startIso: string,
+  endIso: string,
+): Promise<Map<string, number>> {
+  const supabase = await createClient();
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id")
+    .eq("user_id", userId);
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("amount, txn_date")
+    .in("ledger_id", ledgerIds)
+    .eq("type", "expense")
+    .gte("txn_date", startIso)
+    .lte("txn_date", endIso);
+  if (error) throw new Error(error.message);
+
+  const totals = new Map<string, number>();
+  for (const row of (data ?? []) as Array<{
+    amount: string;
+    txn_date: string;
+  }>) {
+    const value = parseFloat(row.amount);
+    if (!Number.isFinite(value)) continue;
+    totals.set(row.txn_date, (totals.get(row.txn_date) ?? 0) + value);
+  }
+  return totals;
+}
+
 function emptyDashboardSummary(): DashboardSummary {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;

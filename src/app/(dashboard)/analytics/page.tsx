@@ -4,6 +4,7 @@ import {
   getCategoryMonthlyBreakdown,
   getCategoryBudgetOverview,
   getCurrentVsPreviousMonth,
+  getDailyExpenseTotals,
   getLast12MonthsFlow,
 } from "@/lib/supabase/queries";
 import {
@@ -14,6 +15,7 @@ import { MonthlyReportCard } from "@/components/analytics/monthly-report-card";
 import { ComparisonBarChart } from "@/components/charts/comparison-bar-chart";
 import { CategoryBreakdown } from "@/components/analytics/category-breakdown";
 import { BudgetOverview } from "@/components/analytics/budget-overview";
+import { SpendingHeatmap } from "@/components/analytics/spending-heatmap";
 import { AnnualFlowChart } from "@/components/charts/annual-flow-chart";
 import { ExportButton } from "@/components/ui/export-button";
 
@@ -34,12 +36,38 @@ export default async function AnalyticsPage() {
   const prevPrevMonth = prevPrevDate.getMonth() + 1;
   const prevPrevYear = prevPrevDate.getFullYear();
 
-  const [annualFlow, comparison, breakdown, budgetItems] = await Promise.all([
-    getLast12MonthsFlow(user.id),
-    getCurrentVsPreviousMonth(user.id),
-    getCategoryMonthlyBreakdown(user.id, currentMonth, currentYear),
-    getCategoryBudgetOverview(user.id, currentMonth, currentYear),
-  ]);
+  // 91-day (13-week) window for the spending heatmap.
+  const heatmapEnd = new Date(currentYear, currentMonth - 1, now.getDate());
+  const heatmapStart = new Date(heatmapEnd);
+  heatmapStart.setDate(heatmapEnd.getDate() - 90);
+  const toIso = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const heatmapStartIso = toIso(heatmapStart);
+  const heatmapEndIso = toIso(heatmapEnd);
+
+  const [annualFlow, comparison, breakdown, budgetItems, dailyTotals] =
+    await Promise.all([
+      getLast12MonthsFlow(user.id),
+      getCurrentVsPreviousMonth(user.id),
+      getCategoryMonthlyBreakdown(user.id, currentMonth, currentYear),
+      getCategoryBudgetOverview(user.id, currentMonth, currentYear),
+      getDailyExpenseTotals(user.id, heatmapStartIso, heatmapEndIso),
+    ]);
+
+  // Build a dense array of every day in the window (oldest → newest).
+  const heatmapData: { date: string; amount: number }[] = [];
+  {
+    const cursor = new Date(heatmapStart);
+    while (cursor <= heatmapEnd) {
+      const iso = toIso(cursor);
+      heatmapData.push({ date: iso, amount: dailyTotals.get(iso) ?? 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
 
   let lastReport = await getReportFor(user.id, lastMonthYear, lastMonth);
   if (!lastReport) {
@@ -79,6 +107,7 @@ export default async function AnalyticsPage() {
             report={lastReport}
             previousReport={prevPrevReport}
           />
+          <SpendingHeatmap data={heatmapData} />
           <BudgetOverview items={budgetItems} />
           <ComparisonBarChart data={comparison} />
           <CategoryBreakdown
