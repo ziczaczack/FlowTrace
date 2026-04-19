@@ -15,9 +15,9 @@ export const metadata: Metadata = {
     "Track every ringgit. Visual dashboards, low-friction entry, and monthly reports for individual investors.",
 };
 
-// Inline script: read the persisted theme BEFORE first paint so the right
-// .dark class is on <html> immediately. This eliminates the light/dark
-// flash on hard reload.
+// Inline script: read the persisted theme & preferences BEFORE first paint
+// so the right .dark class, accent palette, density, and privacy mode are
+// all on <html> immediately. Eliminates flash on hard reload.
 const themeBootScript = `
 (function () {
   try {
@@ -25,6 +25,16 @@ const themeBootScript = `
     var theme = stored === 'light' || stored === 'dark' ? stored : 'dark';
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
+  } catch (e) {}
+  try {
+    var raw = localStorage.getItem('flowtrace-prefs');
+    var prefs = raw ? JSON.parse(raw) : {};
+    var accent = ['emerald','ocean','violet','sunset','rose','slate'].indexOf(prefs.accent) >= 0 ? prefs.accent : 'emerald';
+    var density = ['compact','comfortable','spacious'].indexOf(prefs.density) >= 0 ? prefs.density : 'comfortable';
+    document.documentElement.setAttribute('data-accent', accent);
+    document.documentElement.setAttribute('data-density', density);
+    if (prefs.privacy) document.documentElement.classList.add('privacy-mode');
+    if (prefs.reduceMotion) document.documentElement.classList.add('reduce-motion');
   } catch (e) {}
 })();
 `;

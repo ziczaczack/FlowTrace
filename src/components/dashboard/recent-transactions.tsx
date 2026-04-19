@@ -83,7 +83,7 @@ export function RecentTransactions({ transactions }: Props) {
 
               {/* Amount */}
               <p
-                className={`shrink-0 text-sm font-semibold tabular-nums ${
+                className={`amount-sensitive shrink-0 text-sm font-semibold tabular-nums ${
                   isTransfer
                     ? "text-muted-foreground"
                     : isIncome

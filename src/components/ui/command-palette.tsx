@@ -4,9 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart2,
+  CalendarDays,
+  EyeOff,
+  Keyboard,
   LayoutDashboard,
   List,
   Moon,
+  Palette,
   Plus,
   Search,
   Settings,
@@ -14,6 +18,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import { usePreferences } from "@/hooks/use-preferences";
 import { TransactionModal } from "@/components/ui/transaction-modal";
 import type { NewTransaction } from "@/types/forms";
 
@@ -30,6 +35,7 @@ type Section = { heading: string; items: CommandItem[] };
 
 export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
   const router = useRouter();
+  const { togglePrivacy, prefs, update } = usePreferences();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -99,6 +105,53 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
               setOpen(false);
             },
           },
+          {
+            id: "toggle-privacy",
+            label: prefs.privacy
+              ? "Disable privacy mode"
+              : "Enable privacy mode",
+            hint: "P",
+            icon: EyeOff,
+            keywords: "blur hide amounts discreet",
+            run: () => {
+              togglePrivacy();
+              setOpen(false);
+            },
+          },
+          {
+            id: "cycle-accent",
+            label: "Cycle accent colour",
+            icon: Palette,
+            keywords: "theme palette colour color",
+            run: () => {
+              const order = [
+                "emerald",
+                "ocean",
+                "violet",
+                "sunset",
+                "rose",
+                "slate",
+              ] as const;
+              const idx = order.indexOf(prefs.accent);
+              const next = order[(idx + 1) % order.length];
+              update({ accent: next });
+              setOpen(false);
+            },
+          },
+          {
+            id: "show-shortcuts",
+            label: "Show keyboard shortcuts",
+            hint: "?",
+            icon: Keyboard,
+            keywords: "help kbd guide hotkeys",
+            run: () => {
+              setOpen(false);
+              // Simulate ? keypress
+              window.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "?" }),
+              );
+            },
+          },
         ],
       },
       {
@@ -121,6 +174,16 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
             keywords: "transactions history feed",
             run: () => {
               router.push("/timeline");
+              setOpen(false);
+            },
+          },
+          {
+            id: "go-calendar",
+            label: "Calendar",
+            icon: CalendarDays,
+            keywords: "month grid day heatmap",
+            run: () => {
+              router.push("/calendar");
               setOpen(false);
             },
           },
@@ -162,7 +225,7 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
         ],
       },
     ],
-    [ledgerId, router],
+    [ledgerId, router, togglePrivacy, prefs.privacy, prefs.accent, update],
   );
 
   const filteredSections = useMemo(() => {

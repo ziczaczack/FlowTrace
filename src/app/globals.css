@@ -64,6 +64,136 @@
   --shadow-elevated: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Accent palettes — change the primary/accent tokens so the
+   entire UI rethemes live. Applied via `html[data-accent=...]`.
+   Emerald is the default (falls back to :root values above).
+   ────────────────────────────────────────────────────────────── */
+html[data-accent="ocean"] {
+  --primary: #0ea5e9;
+  --primary-hover: #0284c7;
+  --accent: #6366f1;
+  --ring: rgba(14, 165, 233, 0.4);
+}
+html[data-accent="ocean"].dark {
+  --primary: #38bdf8;
+  --primary-hover: #7dd3fc;
+  --primary-fg: #04151f;
+  --accent: #a5b4fc;
+  --ring: rgba(56, 189, 248, 0.45);
+}
+
+html[data-accent="violet"] {
+  --primary: #8b5cf6;
+  --primary-hover: #7c3aed;
+  --accent: #ec4899;
+  --ring: rgba(139, 92, 246, 0.4);
+}
+html[data-accent="violet"].dark {
+  --primary: #a78bfa;
+  --primary-hover: #c4b5fd;
+  --primary-fg: #1a0b2e;
+  --accent: #f9a8d4;
+  --ring: rgba(167, 139, 250, 0.45);
+}
+
+html[data-accent="sunset"] {
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --accent: #eab308;
+  --ring: rgba(249, 115, 22, 0.4);
+}
+html[data-accent="sunset"].dark {
+  --primary: #fb923c;
+  --primary-hover: #fdba74;
+  --primary-fg: #1c0a02;
+  --accent: #fde047;
+  --ring: rgba(251, 146, 60, 0.45);
+}
+
+html[data-accent="rose"] {
+  --primary: #f43f5e;
+  --primary-hover: #e11d48;
+  --accent: #c084fc;
+  --ring: rgba(244, 63, 94, 0.4);
+}
+html[data-accent="rose"].dark {
+  --primary: #fb7185;
+  --primary-hover: #fda4af;
+  --primary-fg: #220614;
+  --accent: #d8b4fe;
+  --ring: rgba(251, 113, 133, 0.45);
+}
+
+html[data-accent="slate"] {
+  --primary: #475569;
+  --primary-hover: #334155;
+  --accent: #0ea5e9;
+  --ring: rgba(71, 85, 105, 0.4);
+}
+html[data-accent="slate"].dark {
+  --primary: #94a3b8;
+  --primary-hover: #cbd5e1;
+  --primary-fg: #0b1220;
+  --accent: #7dd3fc;
+  --ring: rgba(148, 163, 184, 0.45);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Density modes — compact / comfortable (default) / spacious.
+   Uses a global CSS var that components can tap into via
+   `style={{ padding: 'var(--density-pad)' }}` or utility classes.
+   ────────────────────────────────────────────────────────────── */
+html[data-density="compact"] {
+  --density-pad: 0.75rem;
+  --density-gap: 0.75rem;
+  --density-card-radius: 0.875rem;
+  --density-text: 0.85rem;
+}
+html[data-density="comfortable"],
+html:not([data-density]) {
+  --density-pad: 1.25rem;
+  --density-gap: 1.25rem;
+  --density-card-radius: 1rem;
+  --density-text: 0.9375rem;
+}
+html[data-density="spacious"] {
+  --density-pad: 1.75rem;
+  --density-gap: 1.75rem;
+  --density-card-radius: 1.25rem;
+  --density-text: 1rem;
+}
+
+html[data-density="compact"] .density-aware {
+  padding: 0.85rem 1rem;
+}
+html[data-density="spacious"] .density-aware {
+  padding: 1.65rem 1.75rem;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Privacy mode — blurs every element with `.amount-sensitive`.
+   Toggle with P. Unblurs on hover/focus so you can still read
+   individual values deliberately.
+   ────────────────────────────────────────────────────────────── */
+html.privacy-mode .amount-sensitive {
+  filter: blur(7px) saturate(0.8);
+  transition: filter 180ms ease-out;
+  user-select: none;
+}
+html.privacy-mode .amount-sensitive:hover,
+html.privacy-mode .amount-sensitive:focus-within {
+  filter: blur(0);
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 /* Expose tokens as Tailwind v4 utilities (bg-bg, text-foreground, etc.) */
 @theme inline {
   --color-bg: var(--bg);

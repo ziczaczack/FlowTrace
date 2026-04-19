@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ProfileEditor } from "@/components/settings/profile-editor";
 import { BudgetManager } from "@/components/settings/budget-manager";
 import { CategoriesManager } from "@/components/settings/categories-manager";
+import { PreferencesPanel } from "@/components/settings/preferences-panel";
 import {
   getCategoryBudgetOverview,
   getCategories,
@@ -49,7 +50,7 @@ export default async function SettingsPage() {
         </header>
 
         <div className="flex flex-col gap-5">
-          {/* ── Profile ─────────────────────────────────────────── */}
+          {/* Profile */}
           <section className="glass-card rounded-2xl p-5">
             <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
               Profile
@@ -60,42 +61,41 @@ export default async function SettingsPage() {
             />
           </section>
 
-          {/* ── Preferences ─────────────────────────────────────── */}
+          {/* Appearance */}
           <section className="glass-card rounded-2xl p-5">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
-              Preferences
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
+                  Appearance & behaviour
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Make FlowTrace feel like yours.
+                </p>
+              </div>
+              <ThemeToggle />
+            </div>
+            <PreferencesPanel />
+          </section>
+
+          {/* Region */}
+          <section className="glass-card rounded-2xl p-5">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
+              Region
             </h2>
-            <div className="space-y-4">
-              {/* Theme */}
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Appearance
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Switch between light and dark theme
-                  </p>
-                </div>
-                <ThemeToggle />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">Currency</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Used across all amounts and reports.
+                </p>
               </div>
-              {/* Currency */}
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Currency
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Used across all amounts and reports
-                  </p>
-                </div>
-                <span className="rounded-lg border border-border bg-surface-muted px-3 py-1.5 text-sm font-medium text-muted-foreground">
-                  MYR
-                </span>
-              </div>
+              <span className="rounded-lg border border-border bg-surface-muted px-3 py-1.5 text-sm font-medium text-muted-foreground">
+                MYR
+              </span>
             </div>
           </section>
 
-          {/* ── Monthly Budgets ──────────────────────────────────── */}
+          {/* Monthly Budgets */}
           <section className="glass-card rounded-2xl p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
@@ -122,7 +122,7 @@ export default async function SettingsPage() {
             <BudgetManager initialItems={budgetItems} />
           </section>
 
-          {/* ── Categories ───────────────────────────────────────── */}
+          {/* Categories */}
           <section className="glass-card rounded-2xl p-5">
             <div className="mb-4">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
@@ -136,7 +136,7 @@ export default async function SettingsPage() {
             <CategoriesManager initialCategories={categories} />
           </section>
 
-          {/* ── Export ───────────────────────────────────────────── */}
+          {/* Export */}
           <section className="glass-card rounded-2xl p-5">
             <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
               Export your data
@@ -147,7 +147,7 @@ export default async function SettingsPage() {
             <ExportButton label="Export all transactions" />
           </section>
 
-          {/* ── Danger zone ──────────────────────────────────────── */}
+          {/* Danger zone */}
           <section className="rounded-2xl border border-negative/30 bg-[var(--negative-soft)] p-5">
             <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-negative">
               Danger zone

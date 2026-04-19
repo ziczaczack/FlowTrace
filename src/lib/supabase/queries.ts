@@ -685,6 +685,92 @@ export async function getCategoryBudgetOverview(
 }
 
 /**
+ * Daily income + expense totals for a user across a month. Returns one row
+ * per day with transactions (days with no transactions are omitted). Used by
+ * the Calendar view to render the month grid.
+ */
+export async function getCalendarMonthData(
+  userId: string,
+  month: number,
+  year: number,
+): Promise<
+  Map<string, { income: number; expense: number; count: number }>
+> {
+  const supabase = await createClient();
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id")
+    .eq("user_id", userId);
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("amount, type, txn_date")
+    .in("ledger_id", ledgerIds)
+    .gte("txn_date", firstDayOfMonth(year, month))
+    .lte("txn_date", lastDayOfMonth(year, month));
+  if (error) throw new Error(error.message);
+
+  const map = new Map<
+    string,
+    { income: number; expense: number; count: number }
+  >();
+  for (const row of (data ?? []) as Array<{
+    amount: string;
+    type: string;
+    txn_date: string;
+  }>) {
+    const value = parseFloat(row.amount);
+    if (!Number.isFinite(value)) continue;
+    const entry = map.get(row.txn_date) ?? {
+      income: 0,
+      expense: 0,
+      count: 0,
+    };
+    if (row.type === "income") entry.income += value;
+    else if (row.type === "expense") entry.expense += value;
+    entry.count += 1;
+    map.set(row.txn_date, entry);
+  }
+  return map;
+}
+
+/**
+ * Fetch transactions that occurred on a single calendar date (across all
+ * ledgers for the user). Used by the Calendar day drawer.
+ */
+export async function getTransactionsByDate(
+  userId: string,
+  ymd: string,
+): Promise<Transaction[]> {
+  const supabase = await createClient();
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id")
+    .eq("user_id", userId);
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      `
+      id, ledger_id, category_id, recurring_rule_id, transfer_pair_id,
+      amount, type, payment_method, note, txn_date, created_at,
+      category:categories ( id, name, icon, color )
+      `,
+    )
+    .in("ledger_id", ledgerIds)
+    .eq("txn_date", ymd)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as Transaction[];
+}
+
+/**
  * Daily expense totals for a user over an inclusive date range.
  * Returns a map of YYYY-MM-DD → total expense (in the range).
  * Days with no expenses are omitted.

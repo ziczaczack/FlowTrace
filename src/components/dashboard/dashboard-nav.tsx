@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart2,
+  CalendarDays,
   LayoutDashboard,
   List,
   Settings,
@@ -16,6 +17,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/timeline", label: "Timeline", icon: List },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -94,7 +96,7 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
   }
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-30 grid grid-cols-4 rounded-2xl border border-border bg-surface/85 px-1 py-1 shadow-[var(--shadow-elevated)] backdrop-blur-xl md:hidden">
+    <nav className="fixed bottom-3 left-3 right-3 z-30 grid grid-cols-5 rounded-2xl border border-border bg-surface/85 px-1 py-1 shadow-[var(--shadow-elevated)] backdrop-blur-xl md:hidden">
       {ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (

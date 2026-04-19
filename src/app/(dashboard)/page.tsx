@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getCategories,
   getCategoryBudgetOverview,
   getCategoryMonthlyBreakdown,
   getCurrentMonthByCategory,
@@ -9,8 +10,11 @@ import {
   getTransactions,
 } from "@/lib/supabase/queries";
 import { computeInsights } from "@/lib/insights";
+import { computeHealthScore } from "@/lib/health-score";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { SmartInsights } from "@/components/dashboard/smart-insights";
+import { HealthScoreCard } from "@/components/dashboard/health-score-card";
+import { QuickAddBar } from "@/components/dashboard/quick-add-bar";
 import { NetFlowChart } from "@/components/charts/net-flow-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
@@ -63,13 +67,14 @@ export default async function DashboardPage() {
   const prevYear = prevDate.getFullYear();
   const daysInPrevMonth = new Date(currentYear, currentMonth - 1, 0).getDate();
 
-  const [summary, byCategory, monthTxns, prevByCategory, budgetItems] =
+  const [summary, byCategory, monthTxns, prevByCategory, budgetItems, categories] =
     await Promise.all([
       getDashboardSummary(user.id),
       getCurrentMonthByCategory(user.id),
       getTransactions(ledger.id, currentMonth, currentYear),
       getCategoryMonthlyBreakdown(user.id, prevMonth, prevYear),
       getCategoryBudgetOverview(user.id, currentMonth, currentYear),
+      getCategories(user.id),
     ]);
 
   const previousMonthExpense = summary.last6Months.find(
@@ -84,6 +89,13 @@ export default async function DashboardPage() {
     currentByCategory: byCategory,
     previousByCategory: prevByCategory,
     budgetItems,
+  });
+
+  const healthScore = computeHealthScore({
+    income: summary.currentMonth.income,
+    expense: summary.currentMonth.expense,
+    budgetItems,
+    currentByCategory: byCategory,
   });
 
   const lifetimeFlow =
@@ -119,19 +131,36 @@ export default async function DashboardPage() {
         </header>
 
         {isEmpty ? (
-          <EmptyState />
+          <>
+            <QuickAddBar ledgerId={ledger.id} categories={categories} />
+            <div className="mt-6">
+              <EmptyState />
+            </div>
+          </>
         ) : (
           <div className="flex flex-col gap-5">
+            <QuickAddBar ledgerId={ledger.id} categories={categories} />
             <SummaryCards
               totalBalance={summary.totalBalance}
               income={summary.currentMonth.income}
               expense={summary.currentMonth.expense}
               net={summary.currentMonth.net}
             />
-            <SmartInsights insights={insights} />
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+              <div className="min-w-0 lg:col-span-2">
+                <HealthScoreCard score={healthScore} />
+              </div>
+              <div className="min-w-0 lg:col-span-3">
+                <SmartInsights insights={insights} />
+              </div>
+            </div>
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-              <NetFlowChart data={summary.last6Months} />
-              <CategoryDonutChart data={byCategory} />
+              <div className="min-w-0">
+                <NetFlowChart data={summary.last6Months} />
+              </div>
+              <div className="min-w-0">
+                <CategoryDonutChart data={byCategory} />
+              </div>
             </div>
             <RecentTransactions transactions={monthTxns} />
           </div>

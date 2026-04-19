@@ -57,7 +57,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
           Total balance
         </p>
-        <p className="mt-2.5 text-[26px] font-semibold tracking-tight text-foreground tabular-nums">
+        <p className="amount-sensitive mt-2.5 text-[26px] font-semibold tracking-tight text-foreground tabular-nums">
           {formatMYR(balanceVal)}
         </p>
       </div>
@@ -67,7 +67,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
           Income · this month
         </p>
-        <p className="mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-positive tabular-nums">
+        <p className="amount-sensitive mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-positive tabular-nums">
           <ArrowUpRight className="h-5 w-5 shrink-0" aria-hidden />
           {formatMYR(incomeVal)}
         </p>
@@ -78,7 +78,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
           Expenses · this month
         </p>
-        <p className="mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-negative tabular-nums">
+        <p className="amount-sensitive mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-negative tabular-nums">
           <ArrowDownRight className="h-5 w-5 shrink-0" aria-hidden />
           {formatMYR(expenseVal)}
         </p>
@@ -90,7 +90,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
           Net · this month
         </p>
         <p
-          className={`mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight tabular-nums ${
+          className={`amount-sensitive mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight tabular-nums ${
             isPositiveNet ? "text-positive" : "text-negative"
           }`}
         >

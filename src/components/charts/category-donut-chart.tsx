@@ -57,8 +57,8 @@ export function CategoryDonutChart({ data }: Props) {
         </span>
       </div>
 
-      <div className="relative h-[260px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative h-[260px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <PieChart>
             <Pie
               data={data}

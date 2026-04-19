@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateDefaultLedger } from "@/lib/supabase/queries";
 
@@ -28,8 +29,9 @@ export default async function DashboardLayout({
       {/* Mobile bottom nav */}
       <DashboardNav variant="bottom" />
 
-      {/* Global Cmd+K command palette */}
+      {/* Global overlays — Cmd+K palette and ? shortcuts guide */}
       <CommandPalette ledgerId={ledger?.id ?? null} />
+      <KeyboardShortcuts />
     </div>
   );
 }

@@ -78,8 +78,8 @@ export function NetFlowChart({ data }: Props) {
           Last 6 months
         </span>
       </div>
-      <div className="h-[240px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[240px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart
             data={chartData}
             margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
