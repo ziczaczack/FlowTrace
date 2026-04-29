@@ -87,13 +87,7 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </Button>
 
-          <div className="flex items-center justify-between text-sm">
-            <Link
-              href="#"
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Forgot password?
-            </Link>
+          <div className="flex items-center justify-end text-sm">
             <Link
               href="/signup"
               className="font-medium text-primary transition-colors hover:text-primary-hover"

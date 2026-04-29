@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   BarChart2,
   CalendarDays,
+  Download,
   EyeOff,
   Keyboard,
   LayoutDashboard,
@@ -19,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { usePreferences } from "@/hooks/use-preferences";
+import { useTheme } from "@/hooks/use-theme";
 import { TransactionModal } from "@/components/ui/transaction-modal";
 import type { NewTransaction } from "@/types/forms";
 
@@ -36,6 +38,7 @@ type Section = { heading: string; items: CommandItem[] };
 export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
   const router = useRouter();
   const { togglePrivacy, prefs, update } = usePreferences();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -43,8 +46,19 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Global Cmd+K / Ctrl+K.
+  // Global Cmd+K / Ctrl+K, plus the advertised `N` shortcut that opens
+  // the new-transaction modal directly.
   useEffect(() => {
+    const isEditable = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        el.isContentEditable
+      );
+    };
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -57,22 +71,22 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
         });
       } else if (e.key === "Escape" && open) {
         setOpen(false);
+      } else if (
+        e.key.toLowerCase() === "n" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey &&
+        !isEditable(e.target) &&
+        ledgerId
+      ) {
+        e.preventDefault();
+        setModalOpen(true);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open]);
-
-  function toggleTheme() {
-    const root = document.documentElement;
-    const next = root.classList.contains("dark") ? "light" : "dark";
-    root.classList.toggle("dark", next === "dark");
-    try {
-      localStorage.setItem("theme", next);
-    } catch {
-      /* ignore */
-    }
-  }
+  }, [open, ledgerId]);
 
   const sections: Section[] = useMemo(
     () => [
@@ -94,11 +108,7 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           {
             id: "toggle-theme",
             label: "Toggle theme",
-            icon:
-              typeof document !== "undefined" &&
-              document.documentElement.classList.contains("dark")
-                ? Sun
-                : Moon,
+            icon: theme === "dark" ? Sun : Moon,
             keywords: "dark light mode",
             run: () => {
               toggleTheme();
@@ -136,6 +146,16 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
               const next = order[(idx + 1) % order.length];
               update({ accent: next });
               setOpen(false);
+            },
+          },
+          {
+            id: "export-csv",
+            label: "Export CSV",
+            icon: Download,
+            keywords: "download csv export data backup spreadsheet",
+            run: () => {
+              setOpen(false);
+              window.location.href = "/api/export";
             },
           },
           {
@@ -225,7 +245,16 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
         ],
       },
     ],
-    [ledgerId, router, togglePrivacy, prefs.privacy, prefs.accent, update],
+    [
+      ledgerId,
+      router,
+      togglePrivacy,
+      prefs.privacy,
+      prefs.accent,
+      update,
+      theme,
+      toggleTheme,
+    ],
   );
 
   const filteredSections = useMemo(() => {

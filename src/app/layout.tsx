@@ -9,10 +9,29 @@ const plex = IBM_Plex_Sans({
   display: "swap",
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "FlowTrace — Personal finance, finally calm",
   description:
     "Track every ringgit. Visual dashboards, low-friction entry, and monthly reports for individual investors.",
+  applicationName: "FlowTrace",
+  openGraph: {
+    title: "FlowTrace — Personal finance, finally calm",
+    description:
+      "Low-friction entry. Visual dashboards. Monthly reports for individual investors.",
+    siteName: "FlowTrace",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FlowTrace — Personal finance, finally calm",
+    description:
+      "Low-friction entry. Visual dashboards. Monthly reports for individual investors.",
+  },
 };
 
 // Inline script: read the persisted theme & preferences BEFORE first paint

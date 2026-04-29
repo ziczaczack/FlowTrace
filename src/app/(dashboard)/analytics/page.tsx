@@ -36,6 +36,14 @@ export default async function AnalyticsPage() {
   const prevPrevMonth = prevPrevDate.getMonth() + 1;
   const prevPrevYear = prevPrevDate.getFullYear();
 
+  // Gate historical sections on account age. Trying to show a report for a
+  // month that ended before the user signed up just yields empty charts.
+  const accountCreated = new Date(user.created_at);
+  const lastMonthEnd = new Date(currentYear, currentMonth - 1, 1); // exclusive
+  const prevPrevEnd = new Date(currentYear, currentMonth - 2, 1); // exclusive
+  const accountCoversLastMonth = accountCreated < lastMonthEnd;
+  const accountCoversPrevPrev = accountCreated < prevPrevEnd;
+
   // 91-day (13-week) window for the spending heatmap.
   const heatmapEnd = new Date(currentYear, currentMonth - 1, now.getDate());
   const heatmapStart = new Date(heatmapEnd);
@@ -58,6 +66,14 @@ export default async function AnalyticsPage() {
       getDailyExpenseTotals(user.id, heatmapStartIso, heatmapEndIso),
     ]);
 
+  // Drop annual-flow months that pre-date account creation so brand-new
+  // users don't see a long row of empty bars.
+  const accountStartKey =
+    accountCreated.getFullYear() * 12 + accountCreated.getMonth();
+  const trimmedAnnualFlow = annualFlow.filter(
+    (m) => m.year * 12 + (m.month - 1) >= accountStartKey,
+  );
+
   // Build a dense array of every day in the window (oldest → newest).
   const heatmapData: { date: string; amount: number }[] = [];
   {
@@ -69,8 +85,10 @@ export default async function AnalyticsPage() {
     }
   }
 
-  let lastReport = await getReportFor(user.id, lastMonthYear, lastMonth);
-  if (!lastReport) {
+  let lastReport = accountCoversLastMonth
+    ? await getReportFor(user.id, lastMonthYear, lastMonth)
+    : null;
+  if (!lastReport && accountCoversLastMonth) {
     try {
       lastReport = await generateMonthlyReport(
         user.id,
@@ -81,11 +99,9 @@ export default async function AnalyticsPage() {
       lastReport = null;
     }
   }
-  const prevPrevReport = await getReportFor(
-    user.id,
-    prevPrevYear,
-    prevPrevMonth,
-  );
+  const prevPrevReport = accountCoversPrevPrev
+    ? await getReportFor(user.id, prevPrevYear, prevPrevMonth)
+    : null;
 
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
@@ -103,10 +119,12 @@ export default async function AnalyticsPage() {
         </header>
 
         <div className="flex flex-col gap-5">
-          <MonthlyReportCard
-            report={lastReport}
-            previousReport={prevPrevReport}
-          />
+          {accountCoversLastMonth && (
+            <MonthlyReportCard
+              report={lastReport}
+              previousReport={prevPrevReport}
+            />
+          )}
           <SpendingHeatmap data={heatmapData} />
           <BudgetOverview items={budgetItems} />
           <ComparisonBarChart data={comparison} />
@@ -116,7 +134,7 @@ export default async function AnalyticsPage() {
             initialYear={currentYear}
             accountCreatedAt={user.created_at}
           />
-          <AnnualFlowChart data={annualFlow} />
+          <AnnualFlowChart data={trimmedAnnualFlow} />
         </div>
       </div>
     </div>

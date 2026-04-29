@@ -170,6 +170,7 @@ export function TransactionFeed({
   }
 
   async function handleDelete(id: string) {
+    const removed = transactions.find((t) => t.id === id);
     const snapshot = transactions;
     setTransactions((prev) => prev.filter((t) => t.id !== id));
     try {
@@ -178,7 +179,17 @@ export function TransactionFeed({
       if (!res.ok || json.error) {
         throw new Error(json.error ?? "Failed to delete");
       }
-      showToast("Transaction deleted", "success");
+      if (removed) {
+        showToast("Transaction deleted", "success", {
+          duration: 5000,
+          action: {
+            label: "Undo",
+            onAction: () => undoDelete(removed),
+          },
+        });
+      } else {
+        showToast("Transaction deleted", "success");
+      }
     } catch (e) {
       setTransactions(snapshot);
       showToast(
@@ -186,6 +197,41 @@ export function TransactionFeed({
         "error",
       );
       throw e;
+    }
+  }
+
+  async function undoDelete(removed: Transaction) {
+    // Re-insert optimistically so the row reappears immediately.
+    setTransactions((prev) => {
+      if (prev.some((t) => t.id === removed.id)) return prev;
+      return [removed, ...prev];
+    });
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ledgerId: removed.ledger_id,
+          amount: parseFloat(removed.amount),
+          type: removed.type,
+          categoryId: removed.category_id,
+          paymentMethod: removed.payment_method ?? undefined,
+          note: removed.note ?? undefined,
+          txnDate: removed.txn_date,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error ?? "Failed to restore transaction");
+      }
+      await loadMonth(month, year);
+      showToast("Transaction restored", "success");
+    } catch (e) {
+      setTransactions((prev) => prev.filter((t) => t.id !== removed.id));
+      showToast(
+        e instanceof Error ? e.message : "Failed to restore transaction",
+        "error",
+      );
     }
   }
 

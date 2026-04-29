@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Trash2 } from "lucide-react";
 import type { Transaction } from "@/types/database";
 import { formatMYR } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { formatMYR } from "@/lib/utils";
 type Props = {
   transaction: Transaction;
   onEdit: (transaction: Transaction) => void;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void> | void;
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -44,9 +44,6 @@ function amountDisplay(t: Transaction): {
 }
 
 export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
-  const [confirming, setConfirming] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [removed, setRemoved] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
 
@@ -56,11 +53,15 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
     };
   }, []);
 
+  function triggerDelete() {
+    void onDelete(transaction.id);
+  }
+
   function startLongPress() {
     longPressed.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressed.current = true;
-      setConfirming(true);
+      triggerDelete();
     }, 500);
   }
   function cancelLongPress() {
@@ -75,19 +76,7 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
       longPressed.current = false;
       return;
     }
-    if (confirming) return;
     onEdit(transaction);
-  }
-
-  async function handleConfirmDelete() {
-    setDeleting(true);
-    try {
-      await onDelete(transaction.id);
-      setRemoved(true);
-    } catch {
-      setDeleting(false);
-      setConfirming(false);
-    }
   }
 
   const cat = transaction.category;
@@ -100,14 +89,7 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
   const amt = amountDisplay(transaction);
 
   return (
-    <div
-      className={[
-        "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200",
-        "hover:bg-surface-muted",
-        removed ? "pointer-events-none opacity-0" : "opacity-100",
-      ].join(" ")}
-      style={{ transitionDuration: removed ? "300ms" : undefined }}
-    >
+    <div className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-surface-muted">
       {/* Icon */}
       <div
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[18px]"
@@ -120,93 +102,69 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
         {icon}
       </div>
 
-      {confirming ? (
-        <div className="flex flex-1 items-center justify-between gap-3">
-          <p className="text-sm text-foreground">Delete this transaction?</p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setConfirming(false)}
-              disabled={deleting}
-              className="cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-muted disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmDelete}
-              disabled={deleting}
-              className="cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold text-negative transition-colors hover:bg-[var(--negative-soft)] disabled:opacity-50"
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </button>
-          </div>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+        onTouchStart={startLongPress}
+        onTouchEnd={cancelLongPress}
+        onTouchMove={cancelLongPress}
+        onTouchCancel={cancelLongPress}
+        className="flex flex-1 cursor-pointer items-center gap-3 text-left"
+      >
+        {/* Middle */}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">
+            {name}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {transaction.note ? (
+              <>
+                <span>{transaction.note}</span>
+                {paymentLabel && (
+                  <span className="text-subtle-foreground">
+                    {" "}
+                    · {paymentLabel}
+                  </span>
+                )}
+              </>
+            ) : paymentLabel ? (
+              <span className="text-subtle-foreground">{paymentLabel}</span>
+            ) : null}
+          </p>
         </div>
-      ) : (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={handleClick}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleClick();
-            }
-          }}
-          onTouchStart={startLongPress}
-          onTouchEnd={cancelLongPress}
-          onTouchMove={cancelLongPress}
-          onTouchCancel={cancelLongPress}
-          className="flex flex-1 cursor-pointer items-center gap-3 text-left"
-        >
-          {/* Middle */}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">
-              {name}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {transaction.note ? (
-                <>
-                  <span>{transaction.note}</span>
-                  {paymentLabel && (
-                    <span className="text-subtle-foreground">
-                      {" "}
-                      · {paymentLabel}
-                    </span>
-                  )}
-                </>
-              ) : paymentLabel ? (
-                <span className="text-subtle-foreground">{paymentLabel}</span>
-              ) : null}
-            </p>
-          </div>
 
-          {/* Right */}
-          <div className="shrink-0 text-right">
-            <p
-              className={`text-[15px] font-semibold tabular-nums ${amt.className}`}
-            >
-              {amt.text}
-            </p>
-            <p className="text-[11px] text-subtle-foreground tabular-nums">
-              {formatTime(transaction.created_at)}
-            </p>
-          </div>
-
-          {/* Desktop hover trash */}
-          <button
-            type="button"
-            aria-label="Delete transaction"
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirming(true);
-            }}
-            className="ml-1 hidden cursor-pointer rounded-lg p-1.5 text-subtle-foreground opacity-0 transition-opacity duration-200 hover:bg-surface-strong hover:text-foreground group-hover:opacity-100 md:inline-flex"
+        {/* Right */}
+        <div className="shrink-0 text-right">
+          <p
+            className={`text-[15px] font-semibold tabular-nums ${amt.className}`}
           >
-            <Trash2 className="h-4 w-4" />
-          </button>
+            {amt.text}
+          </p>
+          <p className="text-[11px] text-subtle-foreground tabular-nums">
+            {formatTime(transaction.created_at)}
+          </p>
         </div>
-      )}
+
+        {/* Trash — always visible on touch devices (low opacity), hover-only on desktop. */}
+        <button
+          type="button"
+          aria-label="Delete transaction"
+          onClick={(e) => {
+            e.stopPropagation();
+            triggerDelete();
+          }}
+          className="ml-1 inline-flex cursor-pointer rounded-lg p-1.5 text-subtle-foreground opacity-50 transition-opacity duration-200 hover:bg-surface-strong hover:text-foreground md:opacity-0 md:group-hover:opacity-100"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

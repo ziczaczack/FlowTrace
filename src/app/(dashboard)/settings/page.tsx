@@ -152,16 +152,10 @@ export default async function SettingsPage() {
             <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-negative">
               Danger zone
             </h2>
-            <p className="mb-4 text-xs text-negative/80">
-              Permanently delete your account and all related data.
+            <p className="text-xs text-negative/80">
+              Account deletion is coming in a later release. In the meantime,
+              you can export everything above for safekeeping.
             </p>
-            <button
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded-lg border border-negative/40 px-3 py-1.5 text-xs font-semibold text-negative opacity-60"
-            >
-              Delete all data
-            </button>
           </section>
         </div>
       </div>

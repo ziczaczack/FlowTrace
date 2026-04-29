@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, AlertTriangle } from "lucide-react";
+import { Check, RefreshCw, AlertTriangle } from "lucide-react";
 import type { MonthlyReport } from "@/types/database";
 
 type Props = { report: MonthlyReport | null; previousReport?: MonthlyReport | null };
@@ -29,17 +29,28 @@ export function MonthlyReportCard({ report, previousReport }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [regenerating, setRegenerating] = useState(false);
+  const [justUpdated, setJustUpdated] = useState(false);
+
+  // Auto-hide the "Updated" badge ~2.5s after a successful regeneration.
+  useEffect(() => {
+    if (!justUpdated) return;
+    const t = setTimeout(() => setJustUpdated(false), 2500);
+    return () => clearTimeout(t);
+  }, [justUpdated]);
 
   async function regenerate() {
     if (!report) return;
     setRegenerating(true);
     try {
-      await fetch("/api/reports/generate", {
+      const res = await fetch("/api/reports/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month: report.month, year: report.year }),
       });
-      startTransition(() => router.refresh());
+      if (res.ok) {
+        setJustUpdated(true);
+        startTransition(() => router.refresh());
+      }
     } finally {
       setRegenerating(false);
     }
@@ -87,17 +98,29 @@ export function MonthlyReportCard({ report, previousReport }: Props) {
             {monthLabel}
           </span>
         </h3>
-        <button
-          type="button"
-          onClick={regenerate}
-          disabled={regenerating || pending}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-surface-strong hover:text-foreground disabled:opacity-50"
-        >
-          <RefreshCw
-            className={`h-3 w-3 ${regenerating || pending ? "animate-spin" : ""}`}
-          />
-          Regenerate
-        </button>
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden={!justUpdated}
+            className={[
+              "inline-flex items-center gap-1 rounded-full bg-positive/15 px-2 py-0.5 text-[11px] font-medium text-positive transition-opacity duration-300",
+              justUpdated ? "opacity-100" : "pointer-events-none opacity-0",
+            ].join(" ")}
+          >
+            <Check className="h-3 w-3" />
+            Updated
+          </span>
+          <button
+            type="button"
+            onClick={regenerate}
+            disabled={regenerating || pending}
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-surface-strong hover:text-foreground disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`h-3 w-3 ${regenerating || pending ? "animate-spin" : ""}`}
+            />
+            Regenerate
+          </button>
+        </div>
       </div>
 
       {/* Stat pills */}

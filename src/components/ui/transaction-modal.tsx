@@ -128,6 +128,7 @@ export function TransactionModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   // Batch scan queue: when N receipts are scanned at once, we apply the
   // first to the form and stash the rest. After each save we shift to the
   // next entry until the queue is drained — only then does the modal close.
@@ -164,6 +165,7 @@ export function TransactionModal({
     setScanIndex(0);
     setScanTotal(0);
     setAutoFilled(false);
+    setShowAllCategories(false);
     // Auto-focus amount on open.
     requestAnimationFrame(() => amountRef.current?.focus());
   }, [open, initialData]);
@@ -211,6 +213,22 @@ export function TransactionModal({
     if (type === "income") return categories.filter((c) => c.type === "income");
     return categories.filter((c) => c.type === "expense");
   }, [categories, type]);
+
+  // Pin the selected category to the head of the list so it remains visible
+  // even when the rest is collapsed behind "Show more".
+  const orderedCategories = useMemo(() => {
+    if (!categoryId) return visibleCategories;
+    const selected = visibleCategories.find((c) => c.id === categoryId);
+    if (!selected) return visibleCategories;
+    return [selected, ...visibleCategories.filter((c) => c.id !== categoryId)];
+  }, [visibleCategories, categoryId]);
+
+  const COLLAPSED_LIMIT = 8;
+  const overflowCount = Math.max(0, orderedCategories.length - COLLAPSED_LIMIT);
+  const renderedCategories =
+    showAllCategories || overflowCount === 0
+      ? orderedCategories
+      : orderedCategories.slice(0, COLLAPSED_LIMIT);
 
   const canSave = amountValid && Boolean(categoryId) && !submitting;
 
@@ -449,38 +467,52 @@ export function TransactionModal({
           </p>
           {categoriesLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : visibleCategories.length === 0 ? (
+            <p className="text-sm text-subtle-foreground">
+              No categories — visit /api/seed in dev to seed defaults.
+            </p>
           ) : (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {visibleCategories.map((c) => {
-                const isSelected = c.id === categoryId;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setCategoryId(c.id)}
-                    className={[
-                      "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm transition-colors duration-200",
-                      isSelected
-                        ? "bg-surface-muted text-foreground"
-                        : "border-border bg-transparent text-muted-foreground hover:bg-surface-muted hover:text-foreground",
-                    ].join(" ")}
-                    style={
-                      isSelected && c.color
-                        ? { borderColor: c.color }
-                        : undefined
-                    }
-                  >
-                    <span aria-hidden>{c.icon}</span>
-                    <span>{c.name}</span>
-                  </button>
-                );
-              })}
-              {visibleCategories.length === 0 && (
-                <p className="text-sm text-subtle-foreground">
-                  No categories — visit /api/seed in dev to seed defaults.
-                </p>
+            <>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {renderedCategories.map((c) => {
+                  const isSelected = c.id === categoryId;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCategoryId(c.id)}
+                      className={[
+                        "flex min-w-0 cursor-pointer items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm transition-colors duration-200",
+                        isSelected
+                          ? "bg-surface-muted text-foreground"
+                          : "border-border bg-transparent text-muted-foreground hover:bg-surface-muted hover:text-foreground",
+                      ].join(" ")}
+                      style={
+                        isSelected && c.color
+                          ? { borderColor: c.color }
+                          : undefined
+                      }
+                    >
+                      <span aria-hidden className="shrink-0">
+                        {c.icon}
+                      </span>
+                      <span className="truncate">{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {overflowCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories((s) => !s)}
+                  className="mt-2 cursor-pointer text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {showAllCategories
+                    ? "Show fewer"
+                    : `Show ${overflowCount} more`}
+                </button>
               )}
-            </div>
+            </>
           )}
         </div>
 

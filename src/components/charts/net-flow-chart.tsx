@@ -79,7 +79,7 @@ export function NetFlowChart({ data }: Props) {
         </span>
       </div>
       <div className="h-[240px] w-full min-w-0">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ResponsiveContainer width="100%" height="100%" debounce={50}>
           <LineChart
             data={chartData}
             margin={{ top: 8, right: 8, left: -16, bottom: 0 }}

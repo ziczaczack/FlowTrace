@@ -13,6 +13,7 @@ export function Fab({ onClick, hidden, ariaLabel = "Add transaction" }: FabProps
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
+      title="Add transaction · press N"
       className="fixed bottom-24 right-5 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-fg shadow-[0_18px_40px_-12px_rgba(16,185,129,0.55)] transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] md:bottom-8 md:right-8"
     >
       <svg
