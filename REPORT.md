@@ -223,7 +223,7 @@ Ordered by effort-to-impact ratio.
 - [x] Voice capture through SpeechRecognition + existing NL parser.
 - [ ] Multi-currency.
 - [ ] Geo-tagged transactions + heatmap.
-- [ ] Open-banking / CSV import for MY banks.
+- [x] Open-banking / CSV import for MY banks.
 
 ---
 

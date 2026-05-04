@@ -7,6 +7,7 @@ import { BudgetManager } from "@/components/settings/budget-manager";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { PreferencesPanel } from "@/components/settings/preferences-panel";
 import { LedgerShareManager } from "@/components/settings/ledger-share-manager";
+import { CsvImport } from "@/components/settings/csv-import";
 import {
   getCategoryBudgetOverview,
   getCategories,
@@ -155,6 +156,21 @@ export default async function SettingsPage() {
               ledgers={myLedgers}
               currentUserId={user.id}
             />
+          </section>
+
+          {/* Import bank statements */}
+          <section className="glass-card rounded-2xl p-5">
+            <div className="mb-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
+                Import bank statement
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Upload a CSV from Maybank, CIMB, or Public Bank — preview,
+                pick categories, then commit. Duplicates already in the
+                ledger are skipped automatically.
+              </p>
+            </div>
+            <CsvImport ledgers={myLedgers} categories={categories} />
           </section>
 
           {/* Export */}
