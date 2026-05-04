@@ -6,6 +6,8 @@ import {
   getCurrentVsPreviousMonth,
   getDailyExpenseTotals,
   getLast12MonthsFlow,
+  getMoneyFlow,
+  getYearInReview,
 } from "@/lib/supabase/queries";
 import {
   generateMonthlyReport,
@@ -17,7 +19,10 @@ import { CategoryBreakdown } from "@/components/analytics/category-breakdown";
 import { BudgetOverview } from "@/components/analytics/budget-overview";
 import { SpendingHeatmap } from "@/components/analytics/spending-heatmap";
 import { AnnualFlowChart } from "@/components/charts/annual-flow-chart";
+import { MoneyFlowChart } from "@/components/charts/money-flow-chart";
 import { ExportButton } from "@/components/ui/export-button";
+import { YearInReviewCard } from "@/components/analytics/year-in-review-card";
+import { forecastNetFlow } from "@/lib/forecast";
 
 export default async function AnalyticsPage() {
   const supabase = await createClient();
@@ -57,14 +62,28 @@ export default async function AnalyticsPage() {
   const heatmapStartIso = toIso(heatmapStart);
   const heatmapEndIso = toIso(heatmapEnd);
 
-  const [annualFlow, comparison, breakdown, budgetItems, dailyTotals] =
-    await Promise.all([
-      getLast12MonthsFlow(user.id),
-      getCurrentVsPreviousMonth(user.id),
-      getCategoryMonthlyBreakdown(user.id, currentMonth, currentYear),
-      getCategoryBudgetOverview(user.id, currentMonth, currentYear),
-      getDailyExpenseTotals(user.id, heatmapStartIso, heatmapEndIso),
-    ]);
+  const [
+    annualFlow,
+    comparison,
+    breakdown,
+    budgetItems,
+    dailyTotals,
+    yearReview,
+    moneyFlow,
+  ] = await Promise.all([
+    getLast12MonthsFlow(user.id),
+    getCurrentVsPreviousMonth(user.id),
+    getCategoryMonthlyBreakdown(user.id, currentMonth, currentYear),
+    getCategoryBudgetOverview(user.id, currentMonth, currentYear),
+    getDailyExpenseTotals(user.id, heatmapStartIso, heatmapEndIso),
+    getYearInReview(user.id, currentYear),
+    getMoneyFlow(user.id, currentMonth, currentYear),
+  ]);
+
+  // Offer the prior year too if the user's account predates it.
+  const accountStartedYear = new Date(user.created_at).getFullYear();
+  const yearOptions: number[] = [];
+  for (let y = currentYear; y >= accountStartedYear; y--) yearOptions.push(y);
 
   // Drop annual-flow months that pre-date account creation so brand-new
   // users don't see a long row of empty bars.
@@ -73,6 +92,11 @@ export default async function AnalyticsPage() {
   const trimmedAnnualFlow = annualFlow.filter(
     (m) => m.year * 12 + (m.month - 1) >= accountStartKey,
   );
+
+  // Project the next 2 months only when there are at least 3 historical
+  // data points — otherwise the trend term is too noisy to be useful.
+  const forecast =
+    trimmedAnnualFlow.length >= 3 ? forecastNetFlow(trimmedAnnualFlow, 2) : [];
 
   // Build a dense array of every day in the window (oldest → newest).
   const heatmapData: { date: string; amount: number }[] = [];
@@ -115,7 +139,14 @@ export default async function AnalyticsPage() {
               Deeper insights into your spending
             </p>
           </div>
-          <ExportButton month={currentMonth} year={currentYear} />
+          <div className="flex items-center gap-2">
+            <YearInReviewCard
+              review={yearReview}
+              yearOptions={yearOptions}
+              defaultYear={currentYear}
+            />
+            <ExportButton month={currentMonth} year={currentYear} />
+          </div>
         </header>
 
         <div className="flex flex-col gap-5">
@@ -126,6 +157,7 @@ export default async function AnalyticsPage() {
             />
           )}
           <SpendingHeatmap data={heatmapData} />
+          <MoneyFlowChart data={moneyFlow} />
           <BudgetOverview items={budgetItems} />
           <ComparisonBarChart data={comparison} />
           <CategoryBreakdown
@@ -134,7 +166,7 @@ export default async function AnalyticsPage() {
             initialYear={currentYear}
             accountCreatedAt={user.created_at}
           />
-          <AnnualFlowChart data={trimmedAnnualFlow} />
+          <AnnualFlowChart data={trimmedAnnualFlow} forecast={forecast} />
         </div>
       </div>
     </div>

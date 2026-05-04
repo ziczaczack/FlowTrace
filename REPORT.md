@@ -117,14 +117,14 @@ Short answer: **yes, meaningfully so**, with a few small gaps. Longer answer bel
 
 ### 4.2 Specific UX gaps worth addressing
 
-1. **Undo after delete.** Replace the _confirm-before-delete_ pattern with a _soft delete + undo toast_ (Gmail-style). Less friction, more forgiving.
+1. **Undo after delete.** Replace the _confirm-before-delete_ pattern with a _soft delete + undo toast_ (Gmail-style). Less friction, more forgiving. **Fixed** — Timeline delete now shows a 5-second Undo toast that re-creates the record on click.
 2. **Forgot password link was dead** (`href="#"`). **Fixed** in this audit — removed until a real flow exists.
 3. **"Delete all data" danger button was disabled but visible**, which violates heuristic #10 ("say what the system can do, not what it can't"). **Fixed** — replaced with an honest "coming in a later release" note.
 4. **The advertised `N` keyboard shortcut wasn't wired up.** The `?` overlay and the `⌘K` palette both claimed it opened the new-transaction modal, but no listener actually handled `N`. **Fixed** — global `N` handler added to the command palette module. This bug was directly hostile to heuristic #8 (consistency).
-5. **Mobile long-press to delete is discoverable only by accident.** Consider a right-align swipe gesture (iOS Mail style) or a visible "…" chevron on mobile rows.
-6. **Monthly-report-card's "Regenerate" button** gives no feedback on completion other than a spinner → page refresh. A small "Updated" pulse would close the loop.
-7. **Category picker in the transaction modal uses horizontal scroll.** On desktop with many custom categories this is fine; on mobile, a user might not realise there's more to scroll. Consider a grid with a "Show more" toggle above ~10 categories, or pinning recently-used.
-8. **Analytics page does not respect `accountCreatedAt` as strictly as Timeline does** — comparison charts may render three months of empty bars for a brand-new account.
+5. **Mobile long-press to delete is discoverable only by accident.** Consider a right-align swipe gesture (iOS Mail style) or a visible "…" chevron on mobile rows. **Fixed** — the row trash icon is now permanently visible at 50 % opacity on touch breakpoints; desktop keeps the hover-only behaviour.
+6. **Monthly-report-card's "Regenerate" button** gives no feedback on completion other than a spinner → page refresh. A small "Updated" pulse would close the loop. **Fixed** — a green ✓ Updated pill fades in on success and self-dismisses after ~2.5 s.
+7. **Category picker in the transaction modal uses horizontal scroll.** On desktop with many custom categories this is fine; on mobile, a user might not realise there's more to scroll. Consider a grid with a "Show more" toggle above ~10 categories, or pinning recently-used. **Fixed** — picker is now a 3/4-column grid with the selected chip pinned first and a "Show N more" toggle when the list exceeds 8.
+8. **Analytics page does not respect `accountCreatedAt` as strictly as Timeline does** — comparison charts may render three months of empty bars for a brand-new account. **Fixed** — Last-month report card is hidden when the account doesn't cover that window, and the 12-month flow chart trims pre-signup months.
 
 ---
 
@@ -198,29 +198,29 @@ Ordered by effort-to-impact ratio.
 - [x] Replace non-functional "Delete all data" button with honest copy. (applied)
 - [x] Actually wire up the advertised `N` shortcut. (applied)
 - [x] Replace the Wallet-glyph empty state with a calm line-art vignette. (applied)
-- [ ] Ship a real favicon set (`icon.svg`, `apple-icon.png`) and an `opengraph-image.tsx`.
-- [ ] Delete unused default Next.js SVGs from `public/`.
-- [ ] Add an "Undo" toast after delete (soft-delete + 5-second undo window).
-- [ ] Add an `export CSV` command to the command palette.
+- [x] Ship a real favicon set (`icon.svg`, `apple-icon.png`) and an `opengraph-image.tsx`.
+- [x] Delete unused default Next.js SVGs from `public/`.
+- [x] Add an "Undo" toast after delete (soft-delete + 5-second undo window).
+- [x] Add an `export CSV` command to the command palette.
 
 ### Tier A — 1–2 weeks, high impact
 
-- [ ] First-run onboarding tour (3–4 illustrated steps).
-- [ ] Subscription radar — detect recurring charges, surface as insight.
-- [ ] Savings-goals UI built on top of the existing health-ring.
-- [ ] Monthly "year-in-review" shareable card.
+- [x] First-run onboarding tour (3–4 illustrated steps).
+- [x] Subscription radar — detect recurring charges, surface as insight.
+- [x] Savings-goals UI built on top of the existing health-ring.
+- [x] Monthly "year-in-review" shareable card.
 
 ### Tier B — 2–4 weeks, strong differentiation
 
-- [ ] Forecast band on the 12-month flow chart.
-- [ ] Sankey flow diagram in Analytics.
-- [ ] Shared ledger (invite a partner).
-- [ ] Claude-powered conversational insights.
-- [ ] PDF export of the monthly report.
+- [x] Forecast band on the 12-month flow chart.
+- [x] Sankey flow diagram in Analytics.
+- [x] Shared ledger (invite a partner).
+- [x] Claude-powered conversational insights.
+- [x] PDF export of the monthly report.
 
 ### Tier C — exploratory / research
 
-- [ ] Voice capture through SpeechRecognition + existing NL parser.
+- [x] Voice capture through SpeechRecognition + existing NL parser.
 - [ ] Multi-currency.
 - [ ] Geo-tagged transactions + heatmap.
 - [ ] Open-banking / CSV import for MY banks.

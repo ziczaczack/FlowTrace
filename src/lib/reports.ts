@@ -43,11 +43,11 @@ export async function generateMonthlyReport(
 ): Promise<MonthlyReport> {
   const supabase = await createClient();
 
-  // 1. Resolve the user's ledger ids.
+  // 1. Resolve the user's ledger ids. RLS scopes to ledgers the user is a
+  //    member of (owned or shared).
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
 

@@ -33,6 +33,7 @@ const GROUPS: Group[] = [
     shortcuts: [
       { keys: ["N"], label: "Open new transaction modal" },
       { keys: ["/"], label: "Focus the natural-language quick-add bar" },
+      { keys: ["🎤"], label: "Click the mic in the bar to dictate instead" },
       { keys: ["Enter"], label: "Save parsed quick-add entry" },
     ],
   },

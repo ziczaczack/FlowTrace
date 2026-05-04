@@ -63,8 +63,8 @@ export async function GET(request: Request) {
   } else {
     const { data: ledgerRows, error: ledgerError } = await supabase
       .from("ledgers")
-      .select("id")
-      .eq("user_id", user.id);
+      .select("id");
+    // RLS scopes to ledgers the user is a member of (owned or shared).
     if (ledgerError) {
       return new Response(
         JSON.stringify({ error: ledgerError.message }),

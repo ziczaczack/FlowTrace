@@ -10,7 +10,12 @@ import type {
   CategoryBudgetItem,
   CategoryTotal,
   Ledger,
+  LedgerMemberWithProfile,
+  LedgerRole,
+  LedgerWithMembership,
   MonthlyFlow,
+  RecurringRule,
+  SavingsGoal,
   Transaction,
 } from "@/types/database";
 import type { NewTransaction } from "@/types/forms";
@@ -38,32 +43,32 @@ function lastDayOfMonth(year: number, month: number): string {
 export async function getOrCreateDefaultLedger(userId: string): Promise<Ledger> {
   const supabase = await createClient();
 
-  // There's no unique constraint on (user_id, is_default), so it's possible
-  // for a user to end up with multiple default ledgers (e.g. from earlier
-  // testing). Take the oldest one and treat it as canonical instead of
-  // failing with "multiple rows returned".
-  const { data: existing, error: selectError } = await supabase
-    .from("ledgers")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_default", true)
-    .order("created_at", { ascending: true })
-    .limit(1);
+  // Look up via ledger_members (the post-shared-ledgers source of truth).
+  // Walking through ledger_members avoids depending on the ledgers SELECT
+  // RLS being correctly aligned with ledger_members backfill.
+  const { data: memberships, error: memError } = await supabase
+    .from("ledger_members")
+    .select(`role, ledger:ledgers(*)`)
+    .eq("user_id", userId);
+  if (memError) throw new Error(memError.message);
 
-  if (selectError) throw new Error(selectError.message);
-  if (existing && existing.length > 0) return existing[0] as Ledger;
+  if (memberships && memberships.length > 0) {
+    type Row = { role: string; ledger: Ledger | null };
+    const rows = (memberships as unknown as Row[]).filter(
+      (r): r is { role: string; ledger: Ledger } => r.ledger !== null,
+    );
+    if (rows.length > 0) {
+      // Prefer owned + default; else any owned; else any membership.
+      const owned = rows.filter((r) => r.role === "owner");
+      const ownedDefault = owned.find((r) => r.ledger.is_default);
+      const pick = ownedDefault ?? owned[0] ?? rows[0];
+      return pick.ledger;
+    }
+  }
 
-  // Fallback: if no row is flagged is_default but the user has any ledger,
-  // adopt the oldest one rather than creating a duplicate.
-  const { data: anyLedger, error: anyError } = await supabase
-    .from("ledgers")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1);
-  if (anyError) throw new Error(anyError.message);
-  if (anyLedger && anyLedger.length > 0) return anyLedger[0] as Ledger;
-
+  // Genuinely no membership — create the user's first ledger. The
+  // ledgers_after_insert_membership trigger will register them as owner
+  // in ledger_members automatically.
   const { data: created, error: insertError } = await supabase
     .from("ledgers")
     .insert({
@@ -78,6 +83,84 @@ export async function getOrCreateDefaultLedger(userId: string): Promise<Ledger> 
 
   if (insertError) throw new Error(insertError.message);
   return created as Ledger;
+}
+
+/**
+ * Lists every ledger the current user can access (own + shared) with their
+ * role on each and the total member count.
+ */
+export async function getMyLedgers(
+  userId: string,
+): Promise<LedgerWithMembership[]> {
+  const supabase = await createClient();
+
+  // RLS scopes ledgers to those the user is a member of. Pull the user's
+  // role per ledger via an inner join on ledger_members.
+  const { data: ledgerRows, error: ledgersError } = await supabase
+    .from("ledgers")
+    .select(`*, ledger_members!inner ( role, user_id )`)
+    .eq("ledger_members.user_id", userId);
+  if (ledgersError) throw new Error(ledgersError.message);
+
+  const ids = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ids.length === 0) return [];
+
+  // Member counts in one round-trip — group manually since PostgREST does
+  // not expose group-by aggregation directly.
+  const { data: memberRows, error: memberError } = await supabase
+    .from("ledger_members")
+    .select("ledger_id")
+    .in("ledger_id", ids);
+  if (memberError) throw new Error(memberError.message);
+
+  const counts = new Map<string, number>();
+  for (const row of memberRows ?? []) {
+    counts.set(row.ledger_id, (counts.get(row.ledger_id) ?? 0) + 1);
+  }
+
+  return (ledgerRows ?? []).map((l) => {
+    const memberRow = (
+      l.ledger_members as Array<{ role: LedgerRole; user_id: string }>
+    ).find((m) => m.user_id === userId);
+    const { ledger_members: _ignored, ...ledger } = l as Ledger & {
+      ledger_members: unknown;
+    };
+    void _ignored;
+    return {
+      ...ledger,
+      role: memberRow?.role ?? "viewer",
+      member_count: counts.get(l.id as string) ?? 1,
+    };
+  }) as LedgerWithMembership[];
+}
+
+/**
+ * Returns every member of the given ledger, including their email. The
+ * caller must be a member (RLS + the SECURITY DEFINER RPC enforce this).
+ */
+export async function getLedgerMembers(
+  ledgerId: string,
+): Promise<LedgerMemberWithProfile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_ledger_member_emails", {
+    p_ledger_id: ledgerId,
+  });
+  if (error) throw new Error(error.message);
+  type Row = {
+    user_id: string;
+    email: string | null;
+    role: LedgerRole;
+    joined_at: string;
+  };
+  return ((data ?? []) as Row[]).map((r) => ({
+    ledger_id: ledgerId,
+    user_id: r.user_id,
+    role: r.role,
+    invited_by: null,
+    joined_at: r.joined_at,
+    email: r.email,
+    full_name: null,
+  }));
 }
 
 /**
@@ -129,8 +212,8 @@ export async function getTransactionsByMonth(
 
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
   if (ledgerIds.length === 0) return [];
@@ -144,7 +227,8 @@ export async function getTransactionsByMonth(
       `
       id, ledger_id, category_id, recurring_rule_id, transfer_pair_id,
       amount, type, payment_method, note, txn_date, created_at,
-      category:categories ( id, name, icon, color )
+      category:categories ( id, name, icon, color ),
+      ledger:ledgers ( id, name, icon )
       `,
     )
     .in("ledger_id", ledgerIds)
@@ -154,6 +238,7 @@ export async function getTransactionsByMonth(
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
+  void userId;
   return (data ?? []) as unknown as Transaction[];
 }
 
@@ -169,8 +254,8 @@ export async function getMonthSummary(
 
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
   if (ledgerIds.length === 0) return { income: 0, expense: 0, net: 0 };
@@ -299,8 +384,8 @@ export async function getDashboardSummary(
   //    them locally for the aggregations).
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
 
@@ -393,8 +478,8 @@ export async function getLast12MonthsFlow(
 
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
 
@@ -527,8 +612,8 @@ export async function getCategoryMonthlyBreakdown(
 
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
   if (ledgerIds.length === 0) return [];
@@ -590,6 +675,99 @@ export async function getCategoryMonthlyBreakdown(
   }
   list.sort((a, b) => b.total - a.total);
   return list;
+}
+
+export interface MoneyFlow {
+  income: CategoryTotal[];
+  expense: CategoryTotal[];
+  totalIncome: number;
+  totalExpense: number;
+}
+
+/**
+ * Income + expense breakdown for a single month, both grouped by category.
+ * Powers the Sankey diagram on Analytics. Returns lists sorted DESC by total.
+ */
+export async function getMoneyFlow(
+  userId: string,
+  month: number,
+  year: number,
+): Promise<MoneyFlow> {
+  const supabase = await createClient();
+
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) {
+    return { income: [], expense: [], totalIncome: 0, totalExpense: 0 };
+  }
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      `
+      amount, type, category_id,
+      category:categories ( id, name, icon, color )
+      `,
+    )
+    .in("ledger_id", ledgerIds)
+    .in("type", ["income", "expense"])
+    .gte("txn_date", firstDayOfMonth(year, month))
+    .lte("txn_date", lastDayOfMonth(year, month));
+  if (error) throw new Error(error.message);
+
+  type Row = {
+    amount: string;
+    type: "income" | "expense" | "transfer";
+    category_id: string | null;
+    category:
+      | { id: string; name: string; icon: string | null; color: string | null }
+      | { id: string; name: string; icon: string | null; color: string | null }[]
+      | null;
+  };
+
+  const incomeMap = new Map<string, CategoryTotal>();
+  const expenseMap = new Map<string, CategoryTotal>();
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  for (const row of (data ?? []) as Row[]) {
+    const value = parseFloat(row.amount);
+    if (!Number.isFinite(value)) continue;
+    const cat = Array.isArray(row.category) ? row.category[0] : row.category;
+    const id = cat?.id ?? row.category_id ?? "uncategorised";
+    const name = cat?.name ?? "Uncategorised";
+    const icon = cat?.icon ?? "📦";
+    const color = cat?.color ?? "#6B7280";
+
+    const target = row.type === "income" ? incomeMap : expenseMap;
+    const existing = target.get(id);
+    if (existing) {
+      existing.total += value;
+    } else {
+      target.set(id, { categoryId: id, name, icon, color, total: value, percentage: 0 });
+    }
+
+    if (row.type === "income") totalIncome += value;
+    else totalExpense += value;
+  }
+
+  const finalize = (m: Map<string, CategoryTotal>, grand: number) => {
+    const arr = Array.from(m.values());
+    for (const it of arr) it.percentage = grand > 0 ? (it.total / grand) * 100 : 0;
+    arr.sort((a, b) => b.total - a.total);
+    return arr;
+  };
+
+  return {
+    income: finalize(incomeMap, totalIncome),
+    expense: finalize(expenseMap, totalExpense),
+    totalIncome,
+    totalExpense,
+  };
 }
 
 /**
@@ -699,8 +877,8 @@ export async function getCalendarMonthData(
   const supabase = await createClient();
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
   if (ledgerIds.length === 0) return new Map();
@@ -748,8 +926,8 @@ export async function getTransactionsByDate(
   const supabase = await createClient();
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
   if (ledgerIds.length === 0) return [];
@@ -783,8 +961,8 @@ export async function getDailyExpenseTotals(
   const supabase = await createClient();
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
   if (ledgerIds.length === 0) return new Map();
@@ -843,8 +1021,8 @@ export async function getCurrentMonthByCategory(
 
   const { data: ledgerRows, error: ledgerError } = await supabase
     .from("ledgers")
-    .select("id")
-    .eq("user_id", userId);
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
   if (ledgerError) throw new Error(ledgerError.message);
   const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
   if (ledgerIds.length === 0) return [];
@@ -910,4 +1088,212 @@ export async function getCurrentMonthByCategory(
   }
   list.sort((a, b) => b.total - a.total);
   return list;
+}
+
+/**
+ * Returns the user's recent expense transactions across every ledger,
+ * joined with category metadata. Used by subscription detection.
+ */
+export async function getRecentExpensesForUser(
+  userId: string,
+  days = 120,
+): Promise<Transaction[]> {
+  const supabase = await createClient();
+
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) return [];
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffIso = cutoff.toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      `
+      id, ledger_id, category_id, recurring_rule_id, transfer_pair_id,
+      amount, type, payment_method, note, txn_date, created_at,
+      category:categories ( id, name, icon, color )
+      `,
+    )
+    .in("ledger_id", ledgerIds)
+    .eq("type", "expense")
+    .gte("txn_date", cutoffIso)
+    .order("txn_date", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as Transaction[];
+}
+
+/** Active recurring rules across every ledger the user owns. */
+export async function getActiveRecurringRules(
+  userId: string,
+): Promise<RecurringRule[]> {
+  const supabase = await createClient();
+
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("recurring_rules")
+    .select("*")
+    .in("ledger_id", ledgerIds)
+    .eq("is_active", true);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as RecurringRule[];
+}
+
+/** Active savings goals for the user, newest first. */
+export async function getSavingsGoals(userId: string): Promise<SavingsGoal[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("savings_goals")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as SavingsGoal[];
+}
+
+/**
+ * Aggregate stats for a "year-in-review" card: totals, top categories, the
+ * biggest single-day spend, count of transactions. Operates across every
+ * ledger the user owns. Returns null if the user has no data for the year.
+ */
+export interface YearInReview {
+  year: number;
+  totalIncome: number;
+  totalExpense: number;
+  netFlow: number;
+  savingsRate: number; // 0–100, clamped
+  txnCount: number;
+  topCategories: { name: string; icon: string; color: string; total: number }[];
+  biggestDay: { date: string; total: number } | null;
+  biggestExpense: { note: string | null; categoryName: string; amount: number } | null;
+  monthlyAvg: number;
+  activeMonths: number;
+}
+
+export async function getYearInReview(
+  userId: string,
+  year: number,
+): Promise<YearInReview | null> {
+  const supabase = await createClient();
+
+  const { data: ledgerRows, error: ledgerError } = await supabase
+    .from("ledgers")
+    .select("id");
+  // RLS scopes to ledgers the user is a member of (owned or shared).
+  if (ledgerError) throw new Error(ledgerError.message);
+  const ledgerIds = (ledgerRows ?? []).map((l) => l.id as string);
+  if (ledgerIds.length === 0) return null;
+
+  const start = `${year}-01-01`;
+  const end = `${year}-12-31`;
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      `
+      amount, type, txn_date, note, category_id,
+      category:categories ( id, name, icon, color )
+      `,
+    )
+    .in("ledger_id", ledgerIds)
+    .gte("txn_date", start)
+    .lte("txn_date", end);
+
+  if (error) throw new Error(error.message);
+  type Row = {
+    amount: string;
+    type: string;
+    txn_date: string;
+    note: string | null;
+    category_id: string | null;
+    category:
+      | { id: string; name: string; icon: string | null; color: string | null }
+      | { id: string; name: string; icon: string | null; color: string | null }[]
+      | null;
+  };
+  const rows = (data ?? []) as Row[];
+  if (rows.length === 0) return null;
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+  const byCategory = new Map<
+    string,
+    { name: string; icon: string; color: string; total: number }
+  >();
+  const byDay = new Map<string, number>();
+  const monthsActive = new Set<string>();
+  let biggestExpense: YearInReview["biggestExpense"] = null;
+
+  for (const r of rows) {
+    const amt = parseFloat(r.amount);
+    if (!Number.isFinite(amt)) continue;
+    monthsActive.add(r.txn_date.slice(0, 7));
+    if (r.type === "income") totalIncome += amt;
+    else if (r.type === "expense") {
+      totalExpense += amt;
+      const cat = Array.isArray(r.category) ? r.category[0] : r.category;
+      const id = cat?.id ?? r.category_id ?? "uncategorised";
+      const name = cat?.name ?? "Uncategorised";
+      const icon = cat?.icon ?? "📦";
+      const color = cat?.color ?? "#6B7280";
+      const slot = byCategory.get(id);
+      if (slot) slot.total += amt;
+      else byCategory.set(id, { name, icon, color, total: amt });
+
+      byDay.set(r.txn_date, (byDay.get(r.txn_date) ?? 0) + amt);
+
+      if (!biggestExpense || amt > biggestExpense.amount) {
+        biggestExpense = {
+          note: r.note,
+          categoryName: name,
+          amount: amt,
+        };
+      }
+    }
+  }
+
+  const topCategories = Array.from(byCategory.values())
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 3);
+
+  let biggestDay: YearInReview["biggestDay"] = null;
+  for (const [date, total] of byDay) {
+    if (!biggestDay || total > biggestDay.total) biggestDay = { date, total };
+  }
+
+  const netFlow = totalIncome - totalExpense;
+  const savingsRate =
+    totalIncome > 0 ? Math.max(0, Math.min(100, (netFlow / totalIncome) * 100)) : 0;
+  const activeMonths = monthsActive.size;
+  const monthlyAvg = activeMonths > 0 ? totalExpense / activeMonths : 0;
+
+  return {
+    year,
+    totalIncome,
+    totalExpense,
+    netFlow,
+    savingsRate,
+    txnCount: rows.length,
+    topCategories,
+    biggestDay,
+    biggestExpense,
+    monthlyAvg,
+    activeMonths,
+  };
 }

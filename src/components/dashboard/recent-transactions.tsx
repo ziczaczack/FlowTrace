@@ -26,6 +26,10 @@ function formatDate(dateStr: string): string {
 
 export function RecentTransactions({ transactions }: Props) {
   const recent = transactions.slice(0, 7);
+  // Show ledger label only when transactions span more than one ledger —
+  // single-ledger users would just see the same name on every row.
+  const ledgerIds = new Set(recent.map((t) => t.ledger_id));
+  const showLedgerHint = ledgerIds.size > 1;
 
   if (recent.length === 0) return null;
 
@@ -73,6 +77,11 @@ export function RecentTransactions({ transactions }: Props) {
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   {formatDate(t.txn_date)}
+                  {showLedgerHint && t.ledger && (
+                    <span className="ml-1.5 text-subtle-foreground">
+                      · {t.ledger.icon ?? "💼"} {t.ledger.name}
+                    </span>
+                  )}
                   {t.note && (
                     <span className="ml-1.5 text-subtle-foreground">
                       · {t.note}

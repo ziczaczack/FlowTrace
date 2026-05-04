@@ -1,18 +1,27 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getActiveRecurringRules,
   getCategories,
   getCategoryBudgetOverview,
   getCategoryMonthlyBreakdown,
   getCurrentMonthByCategory,
   getDashboardSummary,
-  getOrCreateDefaultLedger,
-  getTransactions,
+  getMyLedgers,
+  getRecentExpensesForUser,
+  getSavingsGoals,
+  getTransactionsByMonth,
 } from "@/lib/supabase/queries";
 import { computeInsights } from "@/lib/insights";
 import { computeHealthScore } from "@/lib/health-score";
+import { detectSubscriptions, filterUnconfirmed } from "@/lib/subscriptions";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { SmartInsights } from "@/components/dashboard/smart-insights";
+import { AiExplainer } from "@/components/dashboard/ai-explainer";
+import { isAiConfigured } from "@/lib/ai";
+import { SubscriptionRadar } from "@/components/dashboard/subscription-radar";
+import { SavingsGoals } from "@/components/dashboard/savings-goals";
+import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 import { HealthScoreCard } from "@/components/dashboard/health-score-card";
 import { QuickAddBar } from "@/components/dashboard/quick-add-bar";
 import { NetFlowChart } from "@/components/charts/net-flow-chart";
@@ -58,7 +67,8 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const ledger = await getOrCreateDefaultLedger(user.id);
+  // The dashboard layout already calls getOrCreateDefaultLedger to bootstrap
+  // a fresh user's first ledger — no need to repeat it here.
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
@@ -67,15 +77,34 @@ export default async function DashboardPage() {
   const prevYear = prevDate.getFullYear();
   const daysInPrevMonth = new Date(currentYear, currentMonth - 1, 0).getDate();
 
-  const [summary, byCategory, monthTxns, prevByCategory, budgetItems, categories] =
-    await Promise.all([
-      getDashboardSummary(user.id),
-      getCurrentMonthByCategory(user.id),
-      getTransactions(ledger.id, currentMonth, currentYear),
-      getCategoryMonthlyBreakdown(user.id, prevMonth, prevYear),
-      getCategoryBudgetOverview(user.id, currentMonth, currentYear),
-      getCategories(user.id),
-    ]);
+  const [
+    summary,
+    byCategory,
+    monthTxns,
+    prevByCategory,
+    budgetItems,
+    categories,
+    recentExpenses,
+    activeRules,
+    savingsGoals,
+    myLedgers,
+  ] = await Promise.all([
+    getDashboardSummary(user.id),
+    getCurrentMonthByCategory(user.id),
+    getTransactionsByMonth(user.id, currentMonth, currentYear),
+    getCategoryMonthlyBreakdown(user.id, prevMonth, prevYear),
+    getCategoryBudgetOverview(user.id, currentMonth, currentYear),
+    getCategories(user.id),
+    getRecentExpensesForUser(user.id, 120),
+    getActiveRecurringRules(user.id),
+    getSavingsGoals(user.id),
+    getMyLedgers(user.id),
+  ]);
+
+  const subscriptionDetections = filterUnconfirmed(
+    detectSubscriptions(recentExpenses),
+    activeRules,
+  );
 
   const previousMonthExpense = summary.last6Months.find(
     (m) => m.month === prevMonth && m.year === prevYear,
@@ -132,14 +161,14 @@ export default async function DashboardPage() {
 
         {isEmpty ? (
           <>
-            <QuickAddBar ledgerId={ledger.id} categories={categories} />
+            <QuickAddBar ledgers={myLedgers} categories={categories} />
             <div className="mt-6">
               <EmptyState />
             </div>
           </>
         ) : (
           <div className="flex flex-col gap-5">
-            <QuickAddBar ledgerId={ledger.id} categories={categories} />
+            <QuickAddBar ledgers={myLedgers} categories={categories} />
             <SummaryCards
               totalBalance={summary.totalBalance}
               income={summary.currentMonth.income}
@@ -150,8 +179,9 @@ export default async function DashboardPage() {
               <div className="min-w-0 lg:col-span-2">
                 <HealthScoreCard score={healthScore} />
               </div>
-              <div className="min-w-0 lg:col-span-3">
+              <div className="flex min-w-0 flex-col gap-3 lg:col-span-3">
                 <SmartInsights insights={insights} />
+                {isAiConfigured() && <AiExplainer />}
               </div>
             </div>
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -162,12 +192,15 @@ export default async function DashboardPage() {
                 <CategoryDonutChart data={byCategory} />
               </div>
             </div>
+            <SavingsGoals goals={savingsGoals} />
+            <SubscriptionRadar detections={subscriptionDetections} />
             <RecentTransactions transactions={monthTxns} />
           </div>
         )}
       </div>
 
-      <DashboardFab ledgerId={ledger.id} />
+      <DashboardFab ledgers={myLedgers} />
+      <OnboardingTour suppress={monthTxns.length > 0 || lifetimeFlow} />
     </div>
   );
 }

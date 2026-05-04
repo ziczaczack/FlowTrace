@@ -3,6 +3,7 @@
 // strings here and parseFloat() at the call site.
 
 export type LedgerType = "personal" | "investment" | "business";
+export type LedgerRole = "owner" | "editor" | "viewer";
 export type CategoryType = "income" | "expense";
 export type TransactionType = "income" | "expense" | "transfer";
 export type PaymentMethod = "cash" | "card" | "e-wallet" | "bank_transfer";
@@ -18,6 +19,24 @@ export interface Ledger {
   icon: string | null;
   is_default: boolean;
   created_at: string;
+}
+
+export interface LedgerMember {
+  ledger_id: string;
+  user_id: string;
+  role: LedgerRole;
+  invited_by: string | null;
+  joined_at: string;
+}
+
+export interface LedgerMemberWithProfile extends LedgerMember {
+  email: string | null;
+  full_name: string | null;
+}
+
+export interface LedgerWithMembership extends Ledger {
+  role: LedgerRole;
+  member_count: number;
 }
 
 export interface Category {
@@ -44,6 +63,8 @@ export interface Transaction {
   created_at: string;
   // Joined category, when fetched via getTransactions()
   category?: Pick<Category, "id" | "name" | "icon" | "color"> | null;
+  // Joined ledger, when fetched via cross-ledger queries
+  ledger?: Pick<Ledger, "id" | "name" | "icon"> | null;
 }
 
 export interface RecurringRule {
@@ -65,6 +86,19 @@ export interface Budget {
   category_id: string;
   amount_limit: string;
   period: BudgetPeriod;
+  created_at: string;
+}
+
+export interface SavingsGoal {
+  id: string;
+  user_id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  target_amount: string; // numeric(12,2)
+  current_amount: string; // numeric(12,2)
+  target_date: string | null; // YYYY-MM-DD
+  is_active: boolean;
   created_at: string;
 }
 

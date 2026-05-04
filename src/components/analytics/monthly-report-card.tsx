@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, RefreshCw, AlertTriangle } from "lucide-react";
+import { Check, RefreshCw, AlertTriangle, Download } from "lucide-react";
 import type { MonthlyReport } from "@/types/database";
 
 type Props = { report: MonthlyReport | null; previousReport?: MonthlyReport | null };
@@ -109,6 +109,14 @@ export function MonthlyReportCard({ report, previousReport }: Props) {
             <Check className="h-3 w-3" />
             Updated
           </span>
+          <a
+            href={`/api/reports/${report.year}/${report.month}/pdf`}
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-surface-strong hover:text-foreground"
+            title="Download as PDF"
+          >
+            <Download className="h-3 w-3" />
+            PDF
+          </a>
           <button
             type="button"
             onClick={regenerate}

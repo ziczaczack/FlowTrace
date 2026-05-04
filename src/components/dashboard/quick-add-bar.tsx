@@ -2,12 +2,25 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Sparkles, Zap } from "lucide-react";
-import type { Category } from "@/types/database";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Mic,
+  MicOff,
+  Sparkles,
+  Users,
+  Zap,
+} from "lucide-react";
+import type { Category, LedgerWithMembership } from "@/types/database";
 import { parseQuickAdd, type ParsedEntry } from "@/lib/nl-parser";
+import { ACTIVE_LEDGER_KEY } from "@/lib/active-ledger";
+import {
+  useSpeechRecognition,
+  type SpeechError,
+} from "@/hooks/use-speech-recognition";
 
 type Props = {
-  ledgerId: string;
+  ledgers: LedgerWithMembership[];
   categories: Category[];
 };
 
@@ -39,7 +52,7 @@ function friendlyDate(ymd: string): string {
   });
 }
 
-export function QuickAddBar({ ledgerId, categories }: Props) {
+export function QuickAddBar({ ledgers, categories }: Props) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [status, setStatus] = useState<
@@ -47,6 +60,54 @@ export function QuickAddBar({ ledgerId, categories }: Props) {
   >({ kind: "idle" });
   const [placeholder, setPlaceholder] = useState(EXAMPLES[0]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const writable = useMemo(
+    () => ledgers.filter((l) => l.role === "owner" || l.role === "editor"),
+    [ledgers],
+  );
+  // Initial state must be identical on server and client to avoid hydration
+  // mismatch — pick the deterministic owned default. localStorage is only
+  // read after mount in the effect below.
+  const [activeLedgerId, setActiveLedgerId] = useState<string>(() => {
+    if (writable.length === 0) return "";
+    const ownedDefault = writable.find(
+      (l) => l.role === "owner" && l.is_default,
+    );
+    return (ownedDefault ?? writable[0]).id;
+  });
+
+  // After hydration, replace the initial pick with the user's stored choice
+  // (if any). This causes a single re-render but doesn't break SSR.
+  useEffect(() => {
+    if (writable.length === 0) return;
+    const stored = window.localStorage.getItem(ACTIVE_LEDGER_KEY);
+    if (
+      stored &&
+      stored !== activeLedgerId &&
+      writable.some((l) => l.id === stored)
+    ) {
+      setActiveLedgerId(stored);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ledgers]);
+
+  const activeLedger =
+    writable.find((l) => l.id === activeLedgerId) ?? writable[0] ?? null;
+  function pickLedger(id: string) {
+    setActiveLedgerId(id);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ACTIVE_LEDGER_KEY, id);
+    }
+  }
+
+  // Voice capture — feeds transcript into the same NL parser as typing.
+  const speech = useSpeechRecognition({
+    onResult: (transcript) => {
+      setValue(transcript);
+      // Refocus so Enter still works to submit after a hands-free entry.
+      inputRef.current?.focus();
+    },
+  });
 
   // Rotate placeholder examples so users discover what they can type.
   useEffect(() => {
@@ -76,6 +137,26 @@ export function QuickAddBar({ ledgerId, categories }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Mirror the live transcript into the input while listening so the parsed
+  // preview updates in real time. The hook's onResult also runs on stop, so
+  // this is purely the live-preview path.
+  useEffect(() => {
+    if (!speech.isListening) return;
+    const live = `${speech.finalTranscript} ${speech.interimTranscript}`
+      .trim()
+      .replace(/\s+/g, " ");
+    if (live) setValue(live);
+  }, [speech.isListening, speech.finalTranscript, speech.interimTranscript]);
+
+  function toggleVoice() {
+    if (speech.isListening) {
+      speech.stop();
+      return;
+    }
+    setValue("");
+    speech.start();
+  }
+
   const parsed = useMemo<ParsedEntry | null>(
     () => parseQuickAdd(value, categories),
     [value, categories],
@@ -84,13 +165,17 @@ export function QuickAddBar({ ledgerId, categories }: Props) {
   async function submit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!parsed) return;
+    if (!activeLedger) {
+      setStatus({ kind: "error", msg: "No writable ledger available" });
+      return;
+    }
     setStatus({ kind: "saving" });
     try {
       const res = await fetch("/api/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ledgerId,
+          ledgerId: activeLedger.id,
           amount: parsed.amount,
           type: parsed.type,
           categoryId: parsed.categoryId,
@@ -134,9 +219,18 @@ export function QuickAddBar({ ledgerId, categories }: Props) {
             </p>
           </div>
         </div>
-        <kbd className="hidden rounded border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-subtle-foreground sm:inline-block">
-          /
-        </kbd>
+        <div className="flex items-center gap-2">
+          {writable.length > 1 && activeLedger && (
+            <LedgerPickerDropdown
+              ledgers={writable}
+              activeId={activeLedger.id}
+              onPick={pickLedger}
+            />
+          )}
+          <kbd className="hidden rounded border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-subtle-foreground sm:inline-block">
+            /
+          </kbd>
+        </div>
       </div>
 
       <form onSubmit={submit}>
@@ -145,27 +239,73 @@ export function QuickAddBar({ ledgerId, categories }: Props) {
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={`e.g. ${placeholder}`}
-            className="w-full rounded-xl border border-border bg-surface px-4 py-3 pr-32 text-sm text-foreground outline-none placeholder:text-subtle-foreground focus:border-primary focus:ring-2 focus:ring-[var(--ring)]"
+            placeholder={
+              speech.isListening
+                ? "Listening… speak naturally"
+                : `e.g. ${placeholder}`
+            }
+            className={[
+              "w-full rounded-xl border bg-surface px-4 py-3 text-sm text-foreground outline-none placeholder:text-subtle-foreground focus:ring-2 focus:ring-[var(--ring)]",
+              speech.isSupported ? "pr-[5.75rem]" : "pr-32",
+              speech.isListening
+                ? "border-primary ring-2 ring-[var(--ring)]"
+                : "border-border focus:border-primary",
+            ].join(" ")}
             autoComplete="off"
             spellCheck={false}
+            disabled={speech.isListening}
           />
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className={[
-              "absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
-              canSubmit
-                ? "bg-primary text-primary-fg shadow-sm hover:bg-primary-hover"
-                : "cursor-not-allowed bg-surface-muted text-subtle-foreground",
-            ].join(" ")}
-          >
-            {status.kind === "saving"
-              ? "Saving…"
-              : status.kind === "success"
-                ? "Saved ✓"
-                : "Add ↵"}
-          </button>
+          <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
+            {speech.isSupported && (
+              <button
+                type="button"
+                onClick={toggleVoice}
+                aria-pressed={speech.isListening}
+                aria-label={
+                  speech.isListening ? "Stop voice input" : "Start voice input"
+                }
+                title={
+                  speech.isListening
+                    ? "Stop listening"
+                    : "Speak instead of typing"
+                }
+                className={[
+                  "relative grid h-8 w-8 cursor-pointer place-items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                  speech.isListening
+                    ? "bg-negative text-white"
+                    : "bg-surface-muted text-muted-foreground hover:bg-surface-strong hover:text-foreground",
+                ].join(" ")}
+              >
+                {speech.isListening && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 animate-ping rounded-lg bg-negative/40"
+                  />
+                )}
+                {speech.isListening ? (
+                  <MicOff className="relative h-4 w-4" aria-hidden />
+                ) : (
+                  <Mic className="relative h-4 w-4" aria-hidden />
+                )}
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className={[
+                "rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                canSubmit
+                  ? "bg-primary text-primary-fg shadow-sm hover:bg-primary-hover"
+                  : "cursor-not-allowed bg-surface-muted text-subtle-foreground",
+              ].join(" ")}
+            >
+              {status.kind === "saving"
+                ? "Saving…"
+                : status.kind === "success"
+                  ? "Saved ✓"
+                  : "Add ↵"}
+            </button>
+          </div>
         </div>
       </form>
 
@@ -237,8 +377,117 @@ export function QuickAddBar({ ledgerId, categories }: Props) {
       {status.kind === "success" && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-positive">
           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-          Added to your ledger.
+          Added to {activeLedger?.name ?? "your ledger"}.
         </p>
+      )}
+      {speech.error && status.kind !== "saving" && (
+        <p className="mt-2 text-xs text-negative">{speechErrorLabel(speech.error)}</p>
+      )}
+    </div>
+  );
+}
+
+function speechErrorLabel(err: SpeechError): string {
+  switch (err) {
+    case "not-allowed":
+      return "Microphone access blocked. Enable it in your browser settings.";
+    case "no-speech":
+      return "Didn't catch that — try again.";
+    case "audio-capture":
+      return "No microphone detected.";
+    case "network":
+      return "Voice recognition needs a network connection.";
+    default:
+      return "Voice input failed. Try typing instead.";
+  }
+}
+
+function LedgerPickerDropdown({
+  ledgers,
+  activeId,
+  onPick,
+}: {
+  ledgers: LedgerWithMembership[];
+  activeId: string;
+  onPick: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = ledgers.find((l) => l.id === activeId);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  if (!active) return null;
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex max-w-[180px] cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface-muted px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-surface-strong"
+        title="Switch ledger"
+      >
+        <span aria-hidden>{active.icon ?? "💼"}</span>
+        <span className="max-w-[110px] truncate">{active.name}</span>
+        {active.member_count > 1 && (
+          <Users
+            className="h-3 w-3 shrink-0 text-subtle-foreground"
+            aria-label="shared"
+          />
+        )}
+        <ChevronDown
+          className="h-3 w-3 shrink-0 text-subtle-foreground"
+          aria-hidden
+        />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute right-0 z-20 mt-1 w-64 overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+        >
+          {ledgers.map((l) => (
+            <li key={l.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  onPick(l.id);
+                  setOpen(false);
+                }}
+                className={[
+                  "flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-surface-muted",
+                  l.id === activeId ? "bg-surface-muted" : "",
+                ].join(" ")}
+              >
+                <span className="text-base" aria-hidden>
+                  {l.icon ?? "💼"}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-foreground">
+                    {l.name}
+                  </span>
+                  <span className="block text-[10px] uppercase tracking-wide text-subtle-foreground">
+                    {l.role}
+                    {l.member_count > 1 && ` · ${l.member_count} members`}
+                  </span>
+                </span>
+                {l.id === activeId && (
+                  <CheckCircle2
+                    className="h-3.5 w-3.5 text-primary"
+                    aria-label="active"
+                  />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

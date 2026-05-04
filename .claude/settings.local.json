@@ -20,7 +20,9 @@
       "Bash(git commit -m ' *)",
       "Bash(npx tsc *)",
       "Bash(echo \"---EXITCODE:$?---\")",
-      "Bash(echo \"---EXIT:$?---\")"
+      "Bash(echo \"---EXIT:$?---\")",
+      "Skill(claude-api)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

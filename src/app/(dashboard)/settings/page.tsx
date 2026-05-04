@@ -6,9 +6,11 @@ import { ProfileEditor } from "@/components/settings/profile-editor";
 import { BudgetManager } from "@/components/settings/budget-manager";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { PreferencesPanel } from "@/components/settings/preferences-panel";
+import { LedgerShareManager } from "@/components/settings/ledger-share-manager";
 import {
   getCategoryBudgetOverview,
   getCategories,
+  getMyLedgers,
 } from "@/lib/supabase/queries";
 
 export default async function SettingsPage() {
@@ -26,9 +28,10 @@ export default async function SettingsPage() {
     "";
 
   const now = new Date();
-  const [budgetItems, categories] = await Promise.all([
+  const [budgetItems, categories, myLedgers] = await Promise.all([
     getCategoryBudgetOverview(user.id, now.getMonth() + 1, now.getFullYear()),
     getCategories(user.id),
+    getMyLedgers(user.id),
   ]);
 
   const MONTH_NAMES = [
@@ -134,6 +137,24 @@ export default async function SettingsPage() {
               </p>
             </div>
             <CategoriesManager initialCategories={categories} />
+          </section>
+
+          {/* Shared Ledgers */}
+          <section className="glass-card rounded-2xl p-5">
+            <div className="mb-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
+                Shared Ledgers
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Invite someone to co-own a ledger by email. Members share
+                transactions and recurring rules; budgets, savings goals, and
+                AI insights stay personal.
+              </p>
+            </div>
+            <LedgerShareManager
+              ledgers={myLedgers}
+              currentUserId={user.id}
+            />
           </section>
 
           {/* Export */}

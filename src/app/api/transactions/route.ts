@@ -4,18 +4,7 @@ import {
   addTransaction,
   getTransactions,
 } from "@/lib/supabase/queries";
-
-async function verifyLedgerOwnership(ledgerId: string, userId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("ledgers")
-    .select("id")
-    .eq("id", ledgerId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return Boolean(data);
-}
+import { getLedgerAccess } from "@/lib/supabase/ledger-access";
 
 export async function GET(request: Request) {
   try {
@@ -42,8 +31,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const owns = await verifyLedgerOwnership(ledgerId, user.id);
-    if (!owns) {
+    const access = await getLedgerAccess(supabase, ledgerId, user.id);
+    if (!access.hasAccess) {
       return NextResponse.json(
         { data: null, error: "Forbidden" },
         { status: 403 },
@@ -92,10 +81,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const owns = await verifyLedgerOwnership(ledgerId, user.id);
-    if (!owns) {
+    const access = await getLedgerAccess(supabase, ledgerId, user.id);
+    if (!access.canWrite) {
       return NextResponse.json(
-        { data: null, error: "Forbidden" },
+        { data: null, error: access.hasAccess ? "Read-only access" : "Forbidden" },
         { status: 403 },
       );
     }
