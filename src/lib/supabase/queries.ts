@@ -38,14 +38,19 @@ function lastDayOfMonth(year: number, month: number): string {
 }
 
 /**
- * Returns the user's default ledger, creating one ("My Wallet") on first call.
+ * Returns the user's default ledger, creating one ("My Wallet") only if the
+ * user genuinely has no ledger yet.
+ *
+ * Defensive against transient RLS hiccups (auth token refresh, rate limits)
+ * by checking BOTH `ledger_members` and `ledgers` directly before falling
+ * through to the INSERT path. Either query returning a row means the user
+ * already has access to a ledger — never create a phantom "My Wallet" just
+ * because one read came back empty.
  */
 export async function getOrCreateDefaultLedger(userId: string): Promise<Ledger> {
   const supabase = await createClient();
 
-  // Look up via ledger_members (the post-shared-ledgers source of truth).
-  // Walking through ledger_members avoids depending on the ledgers SELECT
-  // RLS being correctly aligned with ledger_members backfill.
+  // Path 1 — via ledger_members (post-shared-ledgers source of truth).
   const { data: memberships, error: memError } = await supabase
     .from("ledger_members")
     .select(`role, ledger:ledgers(*)`)
@@ -58,7 +63,6 @@ export async function getOrCreateDefaultLedger(userId: string): Promise<Ledger> 
       (r): r is { role: string; ledger: Ledger } => r.ledger !== null,
     );
     if (rows.length > 0) {
-      // Prefer owned + default; else any owned; else any membership.
       const owned = rows.filter((r) => r.role === "owner");
       const ownedDefault = owned.find((r) => r.ledger.is_default);
       const pick = ownedDefault ?? owned[0] ?? rows[0];
@@ -66,9 +70,24 @@ export async function getOrCreateDefaultLedger(userId: string): Promise<Ledger> 
     }
   }
 
-  // Genuinely no membership — create the user's first ledger. The
-  // ledgers_after_insert_membership trigger will register them as owner
-  // in ledger_members automatically.
+  // Path 2 — direct ledgers query as a second-opinion. RLS on `ledgers` is
+  // independent from `ledger_members`, so if path 1 was a transient miss
+  // (e.g. auth.uid() was null for a moment) this path is likely to catch
+  // it. Skipping the INSERT here prevents the duplicate-"My Wallet" bug.
+  const { data: ownedLedgers, error: ownedError } = await supabase
+    .from("ledgers")
+    .select("*")
+    .eq("user_id", userId);
+  if (ownedError) throw new Error(ownedError.message);
+
+  if (ownedLedgers && ownedLedgers.length > 0) {
+    const owned = ownedLedgers as Ledger[];
+    return owned.find((l) => l.is_default) ?? owned[0];
+  }
+
+  // Both paths empty — user genuinely has no ledger yet. The
+  // ledgers_after_insert_membership trigger registers them as owner in
+  // ledger_members automatically.
   const { data: created, error: insertError } = await supabase
     .from("ledgers")
     .insert({

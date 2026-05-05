@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
-  getOrCreateDefaultLedger,
+  getMyLedgers,
   getTransactionsByMonth,
 } from "@/lib/supabase/queries";
 import { TransactionFeed } from "@/components/timeline/transaction-feed";
@@ -29,7 +29,19 @@ export default async function TimelinePage({
   const month = Number(params.month) || now.getMonth() + 1;
   const year = Number(params.year) || now.getFullYear();
 
-  const ledger = await getOrCreateDefaultLedger(user.id);
+  // Don't call getOrCreateDefaultLedger here — the dashboard layout already
+  // bootstraps a ledger on the user's first visit. Calling it twice in the
+  // same render tree (layout + page) used to occasionally race against a
+  // transient RLS read miss and create a phantom "My Wallet". Read-only
+  // here, fall back to dashboard if somehow no ledger exists.
+  const ledgers = await getMyLedgers(user.id);
+  const writable = ledgers.filter(
+    (l) => l.role === "owner" || l.role === "editor",
+  );
+  if (writable.length === 0) redirect("/");
+  const owned = writable.filter((l) => l.role === "owner");
+  const defaultLedger =
+    owned.find((l) => l.is_default) ?? owned[0] ?? writable[0];
 
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
@@ -48,7 +60,7 @@ export default async function TimelinePage({
             userId={user.id}
             month={month}
             year={year}
-            defaultLedgerId={ledger.id}
+            defaultLedgerId={defaultLedger.id}
             accountCreatedAt={user.created_at}
           />
         </Suspense>
