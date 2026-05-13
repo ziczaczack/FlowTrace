@@ -1,52 +1,81 @@
 "use client";
 
-import { Check, Eye, EyeOff, Gauge, Palette, Sparkles } from "lucide-react";
+import { Check, Eye, EyeOff, Gauge, Languages, Palette, Sparkles } from "lucide-react";
 import {
   ACCENT_PALETTES,
   type AccentPalette,
   type Density,
+  type Locale,
   usePreferences,
 } from "@/hooks/use-preferences";
+import { useT } from "@/lib/i18n";
 
-const DENSITY_OPTIONS: {
-  id: Density;
-  label: string;
-  description: string;
-}[] = [
-  {
-    id: "compact",
-    label: "Compact",
-    description: "More info on screen. Best for power users.",
-  },
-  {
-    id: "comfortable",
-    label: "Comfortable",
-    description: "Balanced spacing. The default.",
-  },
-  {
-    id: "spacious",
-    label: "Spacious",
-    description: "Roomier layout. Easier to scan.",
-  },
-];
+const DENSITY_OPTIONS: Density[] = ["compact", "comfortable", "spacious"];
+const LOCALE_OPTIONS: Locale[] = ["en", "zh-CN"];
 
 export function PreferencesPanel() {
   const { prefs, update, reset } = usePreferences();
+  const t = useT();
+
+  const accentLabel = (id: AccentPalette) => t(`prefs.accent_${id}`);
+  const accentDesc = (id: AccentPalette) => t(`prefs.accent_${id}_desc`);
 
   return (
     <div className="space-y-6">
+      {/* Language */}
+      <div>
+        <div className="mb-2 flex items-center gap-2">
+          <Languages className="h-4 w-4 text-primary" aria-hidden />
+          <h3 className="text-sm font-semibold text-foreground">
+            {t("prefs.language")}
+          </h3>
+        </div>
+        <p className="mb-3 text-xs text-muted-foreground">
+          {t("prefs.languageHint")}
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {LOCALE_OPTIONS.map((id) => {
+            const active = prefs.locale === id;
+            const label = id === "en" ? t("prefs.locale_en") : t("prefs.locale_zh");
+            const desc =
+              id === "en" ? t("prefs.locale_en_desc") : t("prefs.locale_zh_desc");
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => update({ locale: id })}
+                aria-pressed={active}
+                className={[
+                  "rounded-xl border px-3 py-3 text-left transition-all",
+                  active
+                    ? "border-primary/60 bg-primary/5 ring-2 ring-[var(--ring)]"
+                    : "border-border bg-surface hover:border-border-strong hover:bg-surface-muted",
+                ].join(" ")}
+              >
+                <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  {label}
+                  {active && (
+                    <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
+                  )}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {desc}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Accent palette */}
       <div>
         <div className="mb-2 flex items-center gap-2">
           <Palette className="h-4 w-4 text-primary" aria-hidden />
           <h3 className="text-sm font-semibold text-foreground">
-            Accent palette
+            {t("prefs.accentPalette")}
           </h3>
         </div>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Changes the primary colour used across buttons, links, charts, and
-          highlights. Persists across devices via your browser.
-        </p>
+        <p className="mb-3 text-xs text-muted-foreground">{t("prefs.accentHint")}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {(Object.keys(ACCENT_PALETTES) as AccentPalette[]).map((id) => {
             const palette = ACCENT_PALETTES[id];
@@ -73,13 +102,13 @@ export function PreferencesPanel() {
                 />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    {palette.label}
+                    {accentLabel(id)}
                     {active && (
                       <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
                     )}
                   </span>
                   <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">
-                    {palette.description}
+                    {accentDesc(id)}
                   </span>
                 </span>
               </button>
@@ -92,20 +121,19 @@ export function PreferencesPanel() {
       <div>
         <div className="mb-2 flex items-center gap-2">
           <Gauge className="h-4 w-4 text-primary" aria-hidden />
-          <h3 className="text-sm font-semibold text-foreground">Density</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {t("prefs.density")}
+          </h3>
         </div>
-        <p className="mb-3 text-xs text-muted-foreground">
-          How tightly information is packed. Compact fits more per screen;
-          spacious gives each element room to breathe.
-        </p>
+        <p className="mb-3 text-xs text-muted-foreground">{t("prefs.densityHint")}</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {DENSITY_OPTIONS.map((opt) => {
-            const active = prefs.density === opt.id;
+          {DENSITY_OPTIONS.map((id) => {
+            const active = prefs.density === id;
             return (
               <button
-                key={opt.id}
+                key={id}
                 type="button"
-                onClick={() => update({ density: opt.id })}
+                onClick={() => update({ density: id })}
                 aria-pressed={active}
                 className={[
                   "rounded-xl border px-3 py-3 text-left transition-all",
@@ -115,13 +143,13 @@ export function PreferencesPanel() {
                 ].join(" ")}
               >
                 <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                  {opt.label}
+                  {t(`prefs.density_${id}`)}
                   {active && (
                     <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
                   )}
                 </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                  {opt.description}
+                  {t(`prefs.density_${id}_desc`)}
                 </p>
               </button>
             );
@@ -134,26 +162,26 @@ export function PreferencesPanel() {
         <div className="mb-2 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" aria-hidden />
           <h3 className="text-sm font-semibold text-foreground">
-            Behaviour
+            {t("prefs.behaviour")}
           </h3>
         </div>
         <div className="space-y-2">
           <ToggleRow
             icon={prefs.privacy ? EyeOff : Eye}
-            label="Privacy mode"
-            description="Blur all monetary amounts. Hover or focus to reveal a single value. Toggle anywhere with P."
+            label={t("prefs.privacyMode")}
+            description={t("prefs.privacyHint")}
             active={prefs.privacy}
             onToggle={() => update({ privacy: !prefs.privacy })}
           />
           <ToggleRow
-            label="Reduce motion"
-            description="Minimise animations. Respects prefers-reduced-motion already — use this to override manually."
+            label={t("prefs.reduceMotion")}
+            description={t("prefs.reduceMotionHint")}
             active={prefs.reduceMotion}
             onToggle={() => update({ reduceMotion: !prefs.reduceMotion })}
           />
           <ToggleRow
-            label="Show cents"
-            description="Display the .00 on whole-ringgit amounts. Turn off for a cleaner dashboard."
+            label={t("prefs.showCents")}
+            description={t("prefs.showCentsHint")}
             active={prefs.showCents}
             onToggle={() => update({ showCents: !prefs.showCents })}
           />
@@ -161,15 +189,13 @@ export function PreferencesPanel() {
       </div>
 
       <div className="flex items-center justify-between border-t border-border pt-4">
-        <p className="text-xs text-subtle-foreground">
-          Preferences are saved locally in your browser.
-        </p>
+        <p className="text-xs text-subtle-foreground">{t("prefs.savedLocally")}</p>
         <button
           type="button"
           onClick={() => reset()}
           className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
         >
-          Reset to defaults
+          {t("prefs.resetToDefaults")}
         </button>
       </div>
     </div>

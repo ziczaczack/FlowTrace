@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 type DailyPoint = { date: string; amount: number };
 
@@ -87,6 +88,7 @@ const BUCKET_CLASS = [
 ];
 
 export function SpendingHeatmap({ data }: Props) {
+  const t = useT();
   const [hovered, setHovered] = useState<DailyPoint | null>(null);
   const buckets = useMemo(() => buildBuckets(data), [data]);
   const byDate = useMemo(
@@ -150,11 +152,9 @@ export function SpendingHeatmap({ data }: Props) {
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-[13px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
-            Spending rhythm
+            {t("analytics.spendingHeatmap")}
           </h2>
-          <p className="mt-1 text-lg font-semibold text-foreground">
-            Last {data.length} days
-          </p>
+          <p className="mt-1 text-lg font-semibold text-foreground">{data.length}</p>
         </div>
         <div className="flex items-baseline gap-4 text-right">
           <div>

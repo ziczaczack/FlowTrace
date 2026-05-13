@@ -7,10 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toAuthError } from "@/types/auth";
+import { useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
+  const t = useT();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,29 +46,29 @@ export default function LoginPage() {
           Flow<span className="text-primary">Trace</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to your account
+          {t("auth.signInSubtitle")}
         </p>
       </div>
 
       <div className="glass-card-strong rounded-2xl p-8">
         <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
           <Input
-            label="Email"
+            label={t("auth.email")}
             type="email"
             name="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t("auth.emailPlaceholder")}
             value={email}
             onChange={setEmail}
             disabled={loading}
             required
           />
           <Input
-            label="Password"
+            label={t("auth.password")}
             type="password"
             name="password"
             autoComplete="current-password"
-            placeholder="••••••••"
+            placeholder={t("auth.passwordPlaceholder")}
             value={password}
             onChange={setPassword}
             disabled={loading}
@@ -84,7 +86,7 @@ export default function LoginPage() {
           )}
 
           <Button type="submit" loading={loading} className="w-full">
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? t("auth.signingIn") : t("auth.signIn")}
           </Button>
 
           <div className="flex items-center justify-end text-sm">
@@ -92,7 +94,7 @@ export default function LoginPage() {
               href="/signup"
               className="font-medium text-primary transition-colors hover:text-primary-hover"
             >
-              Create account
+              {t("auth.createAccountLink")}
             </Link>
           </div>
         </form>

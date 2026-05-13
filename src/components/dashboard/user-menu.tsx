@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   email: string;
@@ -25,6 +26,7 @@ export function UserMenu({ email, fullName }: Props) {
   const [signingOut, setSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +54,7 @@ export function UserMenu({ email, fullName }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Account menu"
+        aria-label={t("auth.accountMenu")}
         aria-expanded={open}
         className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
       >
@@ -63,7 +65,7 @@ export function UserMenu({ email, fullName }: Props) {
         <div className="glass-card-strong absolute right-0 top-12 z-40 w-60 overflow-hidden rounded-2xl">
           <div className="px-4 py-3">
             <p className="text-[11px] uppercase tracking-wide text-subtle-foreground">
-              Signed in as
+              {t("auth.signedInAs")}
             </p>
             <p className="mt-0.5 truncate text-sm text-foreground">{email}</p>
           </div>
@@ -75,7 +77,7 @@ export function UserMenu({ email, fullName }: Props) {
             className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-surface-muted disabled:opacity-60"
           >
             <LogOut className="h-4 w-4 text-muted-foreground" />
-            {signingOut ? "Signing out..." : "Sign out"}
+            {signingOut ? t("auth.signingOut") : t("auth.signOut")}
           </button>
         </div>
       )}

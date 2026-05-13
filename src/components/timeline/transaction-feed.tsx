@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
+import { isToday, isYesterday, parseISO } from "date-fns";
 import { Fab } from "@/components/ui/fab";
 import { TransactionModal } from "@/components/ui/transaction-modal";
 import { Toast } from "@/components/ui/toast";
@@ -11,6 +12,7 @@ import { TransactionRow } from "@/components/timeline/transaction-row";
 import { groupTransactionsByDate, formatMYR } from "@/lib/utils";
 import type { Transaction } from "@/types/database";
 import type { NewTransaction } from "@/types/forms";
+import { useT, useLocale, formatDate as fmtDate } from "@/lib/i18n";
 
 type Props = {
   initialTransactions: Transaction[];
@@ -21,21 +23,6 @@ type Props = {
   accountCreatedAt?: string | null;
 };
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 export function TransactionFeed({
   initialTransactions,
   month: initialMonth,
@@ -43,6 +30,8 @@ export function TransactionFeed({
   defaultLedgerId,
   accountCreatedAt,
 }: Props) {
+  const t = useT();
+  const locale = useLocale();
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
   const [month, setMonth] = useState(initialMonth);
@@ -265,8 +254,18 @@ export function TransactionFeed({
   }, [transactions, searchQuery]);
 
   const groups = useMemo(
-    () => groupTransactionsByDate(filteredTransactions),
-    [filteredTransactions],
+    () =>
+      groupTransactionsByDate(filteredTransactions, (iso) => {
+        const d = parseISO(iso);
+        if (isToday(d)) return t("common.today");
+        if (isYesterday(d)) return t("common.yesterday");
+        return fmtDate(d, locale, {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        });
+      }),
+    [filteredTransactions, t, locale],
   );
 
   return (
@@ -288,7 +287,7 @@ export function TransactionFeed({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search…"
+            placeholder={t("commandPalette.placeholder")}
             className="w-full rounded-xl border border-border bg-surface-muted/70 py-2 pl-9 pr-8 text-sm text-foreground outline-none transition-colors placeholder:text-subtle-foreground focus:border-primary focus:ring-2 focus:ring-[var(--ring)] sm:w-52"
           />
           {searchQuery && (
@@ -296,7 +295,7 @@ export function TransactionFeed({
               type="button"
               onClick={() => setSearchQuery("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-subtle-foreground hover:text-foreground cursor-pointer"
-              aria-label="Clear search"
+              aria-label={t("common.close")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -308,7 +307,7 @@ export function TransactionFeed({
       <div className="glass-card mb-6 grid grid-cols-3 gap-3 rounded-2xl px-5 py-4 text-center">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-wide text-subtle-foreground">
-            Income
+            {t("common.income")}
           </p>
           <p className="mt-1 text-sm font-semibold text-positive tabular-nums">
             {formatMYR(summary.income)}
@@ -316,7 +315,7 @@ export function TransactionFeed({
         </div>
         <div className="border-x border-border">
           <p className="text-[10px] font-medium uppercase tracking-wide text-subtle-foreground">
-            Expenses
+            {t("common.expenses")}
           </p>
           <p className="mt-1 text-sm font-semibold text-negative tabular-nums">
             {formatMYR(summary.expense)}
@@ -324,7 +323,7 @@ export function TransactionFeed({
         </div>
         <div>
           <p className="text-[10px] font-medium uppercase tracking-wide text-subtle-foreground">
-            Net
+            {t("common.net")}
           </p>
           <p
             className={`mt-1 text-sm font-semibold tabular-nums ${
@@ -338,7 +337,7 @@ export function TransactionFeed({
 
       {loadingMonth && (
         <p className="mb-4 text-center text-xs text-subtle-foreground">
-          Loading…
+          {t("common.loading")}
         </p>
       )}
 
@@ -347,19 +346,22 @@ export function TransactionFeed({
           {searchQuery ? (
             <>
               <h2 className="text-base font-semibold text-foreground">
-                No results for &ldquo;{searchQuery}&rdquo;
+                {t("commandPalette.empty")}
               </h2>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Try a different keyword
+                &ldquo;{searchQuery}&rdquo;
               </p>
             </>
           ) : (
             <>
               <h2 className="text-base font-semibold text-foreground">
-                No transactions in {MONTH_NAMES[month - 1]} {year}
+                {t("timeline.noTransactions")}
               </h2>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Tap + to add one
+                {fmtDate(new Date(year, month - 1, 1), locale, {
+                  month: "long",
+                  year: "numeric",
+                })}
               </p>
             </>
           )}

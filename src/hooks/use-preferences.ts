@@ -12,12 +12,15 @@ export type AccentPalette =
 
 export type Density = "compact" | "comfortable" | "spacious";
 
+export type Locale = "en" | "zh-CN";
+
 export interface Preferences {
   accent: AccentPalette;
   density: Density;
   privacy: boolean;
   reduceMotion: boolean;
   showCents: boolean;
+  locale: Locale;
 }
 
 const STORAGE_KEY = "flowtrace-prefs";
@@ -29,6 +32,7 @@ export const DEFAULT_PREFS: Preferences = {
   privacy: false,
   reduceMotion: false,
   showCents: true,
+  locale: "en",
 };
 
 export const ACCENT_PALETTES: Record<
@@ -94,6 +98,7 @@ function applyPreferences(prefs: Preferences) {
   const root = document.documentElement;
   root.setAttribute("data-accent", prefs.accent);
   root.setAttribute("data-density", prefs.density);
+  root.setAttribute("lang", prefs.locale === "zh-CN" ? "zh-CN" : "en");
   root.classList.toggle("privacy-mode", prefs.privacy);
   root.classList.toggle("reduce-motion", prefs.reduceMotion);
 }

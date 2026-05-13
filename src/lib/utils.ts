@@ -4,9 +4,11 @@ import type { GroupedTransactions, Transaction } from "@/types/database";
 /**
  * Group a flat, already-sorted (DESC) Transaction[] into per-day buckets.
  * Order within each group is preserved. Bucket order matches input order.
+ * Pass `labelFn` to translate the per-group date label.
  */
 export function groupTransactionsByDate(
   transactions: Transaction[],
+  labelFn: (iso: string) => string = defaultDateLabel,
 ): GroupedTransactions[] {
   const groups = new Map<string, Transaction[]>();
   for (const txn of transactions) {
@@ -17,12 +19,12 @@ export function groupTransactionsByDate(
 
   const result: GroupedTransactions[] = [];
   for (const [date, list] of groups) {
-    result.push({ date, label: dateLabel(date), transactions: list });
+    result.push({ date, label: labelFn(date), transactions: list });
   }
   return result;
 }
 
-function dateLabel(iso: string): string {
+function defaultDateLabel(iso: string): string {
   const d = parseISO(iso);
   if (isToday(d)) return "Today";
   if (isYesterday(d)) return "Yesterday";

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useT, useLocale, formatDate as fmtDate } from "@/lib/i18n";
 
 type Props = {
   month: number;
@@ -10,27 +11,14 @@ type Props = {
   accountCreatedAt?: string | null;
 };
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 export function MonthSelector({
   month,
   year,
   onChange,
   accountCreatedAt,
 }: Props) {
+  const t = useT();
+  const locale = useLocale();
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
@@ -69,19 +57,22 @@ export function MonthSelector({
         type="button"
         onClick={() => go(-1)}
         disabled={atLowerBound}
-        aria-label="Previous month"
+        aria-label={t("timeline.prevMonth")}
         className="cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:text-subtle-foreground disabled:hover:bg-transparent disabled:hover:text-subtle-foreground"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
       <p className="min-w-[140px] text-center text-base font-medium text-foreground">
-        {MONTH_NAMES[month - 1]} {year}
+        {fmtDate(new Date(year, month - 1, 1), locale, {
+          month: "long",
+          year: "numeric",
+        })}
       </p>
       <button
         type="button"
         onClick={() => go(1)}
         disabled={atUpperBound}
-        aria-label="Next month"
+        aria-label={t("timeline.nextMonth")}
         className="cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:text-subtle-foreground disabled:hover:bg-transparent disabled:hover:text-subtle-foreground"
       >
         <ChevronRight className="h-5 w-5" />

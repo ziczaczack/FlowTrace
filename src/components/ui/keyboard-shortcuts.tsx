@@ -1,48 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Keyboard, X } from "lucide-react";
 import { usePreferences } from "@/hooks/use-preferences";
+import { useT } from "@/lib/i18n";
 
 type Shortcut = {
   keys: string[];
-  label: string;
+  labelKey: string;
 };
 
 type Group = {
-  heading: string;
+  headingKey: string;
   shortcuts: Shortcut[];
 };
 
 const GROUPS: Group[] = [
   {
-    heading: "Global",
+    headingKey: "shortcuts.navigate",
     shortcuts: [
-      { keys: ["⌘", "K"], label: "Open command palette" },
-      { keys: ["?"], label: "Show this shortcut guide" },
-      { keys: ["P"], label: "Toggle privacy mode (blur amounts)" },
-      { keys: ["G", "then", "D"], label: "Go to Dashboard" },
-      { keys: ["G", "then", "T"], label: "Go to Timeline" },
-      { keys: ["G", "then", "A"], label: "Go to Analytics" },
-      { keys: ["G", "then", "C"], label: "Go to Calendar" },
-      { keys: ["G", "then", "S"], label: "Go to Settings" },
+      { keys: ["⌘", "K"], labelKey: "shortcuts.openSearch" },
+      { keys: ["?"], labelKey: "shortcuts.showShortcuts" },
+      { keys: ["P"], labelKey: "shortcuts.togglePrivacy" },
+      { keys: ["G", "then", "D"], labelKey: "shortcuts.gotoDashboard" },
+      { keys: ["G", "then", "T"], labelKey: "shortcuts.gotoTimeline" },
+      { keys: ["G", "then", "A"], labelKey: "shortcuts.gotoAnalytics" },
+      { keys: ["G", "then", "C"], labelKey: "shortcuts.gotoCalendar" },
+      { keys: ["G", "then", "S"], labelKey: "shortcuts.gotoSettings" },
     ],
   },
   {
-    heading: "Quick add",
+    headingKey: "shortcuts.transactions",
     shortcuts: [
-      { keys: ["N"], label: "Open new transaction modal" },
-      { keys: ["/"], label: "Focus the natural-language quick-add bar" },
-      { keys: ["🎤"], label: "Click the mic in the bar to dictate instead" },
-      { keys: ["Enter"], label: "Save parsed quick-add entry" },
+      { keys: ["N"], labelKey: "shortcuts.openModal" },
+      { keys: ["/"], labelKey: "shortcuts.focusQuickAdd" },
     ],
   },
   {
-    heading: "Navigation inside pages",
+    headingKey: "shortcuts.view",
     shortcuts: [
-      { keys: ["J", "/", "K"], label: "Move down / up in lists" },
-      { keys: ["←", "→"], label: "Previous / next month (Calendar, Timeline)" },
-      { keys: ["Esc"], label: "Close any overlay" },
+      { keys: ["←", "→"], labelKey: "timeline.prevMonth" },
+      { keys: ["Esc"], labelKey: "common.close" },
     ],
   },
 ];
@@ -50,6 +48,8 @@ const GROUPS: Group[] = [
 export function KeyboardShortcuts() {
   const [open, setOpen] = useState(false);
   const { togglePrivacy } = usePreferences();
+  const t = useT();
+  const groups = useMemo(() => GROUPS, []);
 
   useEffect(() => {
     let pendingG = 0;
@@ -121,7 +121,7 @@ export function KeyboardShortcuts() {
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Keyboard shortcuts"
+      aria-label={t("shortcuts.title")}
     >
       <div
         onClick={() => setOpen(false)}
@@ -135,10 +135,10 @@ export function KeyboardShortcuts() {
             </span>
             <div>
               <h2 className="text-sm font-semibold text-foreground">
-                Keyboard shortcuts
+                {t("shortcuts.title")}
               </h2>
               <p className="text-[11px] text-subtle-foreground">
-                Press <Kbd>?</Kbd> anywhere to open this panel.
+                {t("shortcuts.closeHint")}
               </p>
             </div>
           </div>
@@ -146,25 +146,25 @@ export function KeyboardShortcuts() {
             type="button"
             onClick={() => setOpen(false)}
             className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X className="h-4 w-4" />
           </button>
         </header>
 
         <div className="grid max-h-[70vh] grid-cols-1 gap-6 overflow-y-auto p-5 sm:grid-cols-2">
-          {GROUPS.map((group) => (
-            <section key={group.heading}>
+          {groups.map((group) => (
+            <section key={group.headingKey}>
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle-foreground">
-                {group.heading}
+                {t(group.headingKey)}
               </p>
               <ul className="space-y-1.5">
                 {group.shortcuts.map((s) => (
                   <li
-                    key={s.label}
+                    key={s.labelKey}
                     className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-surface-muted/60"
                   >
-                    <span className="flex-1 text-foreground/85">{s.label}</span>
+                    <span className="flex-1 text-foreground/85">{t(s.labelKey)}</span>
                     <span className="flex shrink-0 items-center gap-1">
                       {s.keys.map((k, i) =>
                         k === "then" || k === "/" ? (
@@ -187,9 +187,7 @@ export function KeyboardShortcuts() {
         </div>
 
         <footer className="flex items-center justify-between border-t border-border bg-surface-muted/50 px-5 py-3 text-[11px] text-subtle-foreground">
-          <span>
-            Tip: combine <Kbd>G</Kbd> + letter for fast page switches.
-          </span>
+          <span>{t("shortcuts.subtitle")}</span>
           <span className="font-medium text-foreground/70">FlowTrace</span>
         </footer>
       </div>

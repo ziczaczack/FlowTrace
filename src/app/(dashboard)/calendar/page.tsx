@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCalendarMonthData } from "@/lib/supabase/queries";
 import { CalendarView } from "@/components/calendar/calendar-view";
+import { CalendarHeader } from "@/components/calendar/calendar-header";
 
 export default async function CalendarPage({
   searchParams,
@@ -27,18 +28,7 @@ export default async function CalendarPage({
   return (
     <div className="px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-6">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-subtle-foreground">
-            Calendar
-          </p>
-          <h1 className="mt-1 text-[28px] font-semibold tracking-tight text-foreground sm:text-[32px]">
-            Every ringgit, day by day
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Click any day to see the transactions. Arrow keys move between
-            months.
-          </p>
-        </header>
+        <CalendarHeader />
         <CalendarView month={month} year={year} days={days} />
       </div>
     </div>

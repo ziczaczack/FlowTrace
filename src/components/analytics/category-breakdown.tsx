@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { MonthSelector } from "@/components/timeline/month-selector";
 import type { CategoryTotal } from "@/types/database";
+import { useT, useLocale, formatDate as fmtDate, translateCategoryName } from "@/lib/i18n";
 
 type Props = {
   initialData: CategoryTotal[];
@@ -69,6 +70,8 @@ export function CategoryBreakdown({
   initialYear,
   accountCreatedAt,
 }: Props) {
+  const t = useT();
+  const locale = useLocale();
   const [month, setMonth] = useState(initialMonth);
   const [year, setYear] = useState(initialYear);
   // Cache fetched results keyed by "year-month" so navigating back to a
@@ -104,7 +107,11 @@ export function CategoryBreakdown({
     <div className="glass-card rounded-2xl p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
-          Spending breakdown · {MONTH_NAMES[month - 1]} {year}
+          {t("analytics.categoryBreakdown")} ·{" "}
+          {fmtDate(new Date(year, month - 1, 1), locale, {
+            month: "long",
+            year: "numeric",
+          })}
         </h3>
         <MonthSelector
           month={month}
@@ -119,11 +126,11 @@ export function CategoryBreakdown({
 
       {loading ? (
         <p className="py-12 text-center text-sm text-subtle-foreground">
-          Loading...
+          {t("common.loading")}
         </p>
       ) : data.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
-          No expenses recorded for this month
+          {t("analytics.noData")}
         </p>
       ) : (
         <>
@@ -145,7 +152,9 @@ export function CategoryBreakdown({
                   width={140}
                   tickFormatter={(value: string) => {
                     const item = data.find((d) => d.name === value);
-                    return item ? `${item.icon} ${item.name}` : value;
+                    return item
+                      ? `${item.icon} ${translateCategoryName(item.name, t)}`
+                      : value;
                   }}
                 />
                 <Tooltip

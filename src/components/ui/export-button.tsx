@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   month?: number;
@@ -14,9 +15,11 @@ export function ExportButton({
   month,
   year,
   ledgerId,
-  label = "Export CSV",
+  label,
 }: Props) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
+  const buttonLabel = label ?? t("settings.exportAll");
 
   function handleClick() {
     const params = new URLSearchParams();
@@ -42,7 +45,7 @@ export function ExportButton({
       ) : (
         <Download className="h-3.5 w-3.5" />
       )}
-      {label}
+      {buttonLabel}
     </button>
   );
 }

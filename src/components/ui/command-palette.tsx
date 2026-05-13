@@ -23,6 +23,7 @@ import { usePreferences } from "@/hooks/use-preferences";
 import { useTheme } from "@/hooks/use-theme";
 import { TransactionModal } from "@/components/ui/transaction-modal";
 import type { NewTransaction } from "@/types/forms";
+import { useT } from "@/lib/i18n";
 
 type CommandItem = {
   id: string;
@@ -37,6 +38,7 @@ type Section = { heading: string; items: CommandItem[] };
 
 export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
   const router = useRouter();
+  const t = useT();
   const { togglePrivacy, prefs, update } = usePreferences();
   const { theme, toggle: toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -91,14 +93,14 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
   const sections: Section[] = useMemo(
     () => [
       {
-        heading: "Actions",
+        heading: t("commandPalette.actions"),
         items: [
           {
             id: "new-txn",
-            label: "Add transaction",
+            label: t("dashboard.addTransaction"),
             hint: "N",
             icon: Plus,
-            keywords: "add new create expense income",
+            keywords: "add new create expense income 添加 新增",
             run: () => {
               setOpen(false);
               if (ledgerId) setModalOpen(true);
@@ -107,9 +109,9 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "toggle-theme",
-            label: "Toggle theme",
+            label: theme === "dark" ? "Light mode" : "Dark mode",
             icon: theme === "dark" ? Sun : Moon,
-            keywords: "dark light mode",
+            keywords: "dark light mode 主题 深色 浅色",
             run: () => {
               toggleTheme();
               setOpen(false);
@@ -117,12 +119,10 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "toggle-privacy",
-            label: prefs.privacy
-              ? "Disable privacy mode"
-              : "Enable privacy mode",
+            label: t("prefs.privacyMode"),
             hint: "P",
             icon: EyeOff,
-            keywords: "blur hide amounts discreet",
+            keywords: "blur hide amounts discreet 隐私",
             run: () => {
               togglePrivacy();
               setOpen(false);
@@ -130,9 +130,9 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "cycle-accent",
-            label: "Cycle accent colour",
+            label: t("prefs.accentPalette"),
             icon: Palette,
-            keywords: "theme palette colour color",
+            keywords: "theme palette colour color 主题 颜色",
             run: () => {
               const order = [
                 "emerald",
@@ -152,7 +152,7 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
             id: "export-csv",
             label: "Export CSV",
             icon: Download,
-            keywords: "download csv export data backup spreadsheet",
+            keywords: "download csv export data backup spreadsheet 导出",
             run: () => {
               setOpen(false);
               window.location.href = "/api/export";
@@ -160,13 +160,12 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "show-shortcuts",
-            label: "Show keyboard shortcuts",
+            label: t("shortcuts.title"),
             hint: "?",
             icon: Keyboard,
-            keywords: "help kbd guide hotkeys",
+            keywords: "help kbd guide hotkeys 快捷键",
             run: () => {
               setOpen(false);
-              // Simulate ? keypress
               window.dispatchEvent(
                 new KeyboardEvent("keydown", { key: "?" }),
               );
@@ -175,13 +174,13 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
         ],
       },
       {
-        heading: "Navigate",
+        heading: t("commandPalette.pages"),
         items: [
           {
             id: "go-dashboard",
-            label: "Dashboard",
+            label: t("nav.dashboard"),
             icon: LayoutDashboard,
-            keywords: "home overview",
+            keywords: "home overview 首页 仪表盘",
             run: () => {
               router.push("/");
               setOpen(false);
@@ -189,9 +188,9 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "go-timeline",
-            label: "Timeline",
+            label: t("nav.timeline"),
             icon: List,
-            keywords: "transactions history feed",
+            keywords: "transactions history feed 时间线 历史",
             run: () => {
               router.push("/timeline");
               setOpen(false);
@@ -199,9 +198,9 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "go-calendar",
-            label: "Calendar",
+            label: t("nav.calendar"),
             icon: CalendarDays,
-            keywords: "month grid day heatmap",
+            keywords: "month grid day heatmap 日历",
             run: () => {
               router.push("/calendar");
               setOpen(false);
@@ -209,9 +208,9 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "go-analytics",
-            label: "Analytics",
+            label: t("nav.analytics"),
             icon: BarChart2,
-            keywords: "reports charts breakdown",
+            keywords: "reports charts breakdown 分析 报告 图表",
             run: () => {
               router.push("/analytics");
               setOpen(false);
@@ -219,9 +218,9 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           },
           {
             id: "go-settings",
-            label: "Settings",
+            label: t("nav.settings"),
             icon: Settings,
-            keywords: "profile budgets categories preferences",
+            keywords: "profile budgets categories preferences 设置 偏好",
             run: () => {
               router.push("/settings");
               setOpen(false);
@@ -230,13 +229,13 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
         ],
       },
       {
-        heading: "Shortcuts",
+        heading: t("settings.sectionBudgets"),
         items: [
           {
             id: "go-budgets",
-            label: "Manage budgets",
+            label: t("settings.sectionBudgets"),
             icon: Wallet,
-            keywords: "limits spending caps",
+            keywords: "limits spending caps 预算",
             run: () => {
               router.push("/settings#budgets");
               setOpen(false);
@@ -246,6 +245,7 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
       },
     ],
     [
+      t,
       ledgerId,
       router,
       togglePrivacy,
@@ -324,7 +324,7 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Command palette"
+          aria-label={t("commandPalette.placeholder")}
           className={[
             "glass-card-strong absolute left-1/2 top-[18%] w-[min(92vw,540px)] -translate-x-1/2 overflow-hidden rounded-2xl",
             "transition-transform duration-200 ease-out",
@@ -341,7 +341,7 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Search actions, pages…"
+              placeholder={t("commandPalette.placeholder")}
               className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-subtle-foreground"
             />
             <kbd className="hidden rounded border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-subtle-foreground sm:inline-block">
@@ -356,7 +356,7 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
           >
             {filteredSections.length === 0 && (
               <li className="px-4 py-8 text-center text-sm text-subtle-foreground">
-                No matches
+                {t("commandPalette.empty")}
               </li>
             )}
             {filteredSections.map((section) => {
@@ -420,13 +420,13 @@ export function CommandPalette({ ledgerId }: { ledgerId: string | null }) {
                 <kbd className="rounded border border-border bg-surface px-1 py-0.5">
                   ↑↓
                 </kbd>
-                navigate
+                {t("shortcuts.navigate")}
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="rounded border border-border bg-surface px-1 py-0.5">
                   ↵
                 </kbd>
-                select
+                {t("common.confirm")}
               </span>
             </span>
             <span className="font-medium text-foreground/70">FlowTrace</span>

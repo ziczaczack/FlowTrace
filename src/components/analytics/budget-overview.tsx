@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Target } from "lucide-react";
 import type { CategoryBudgetItem } from "@/types/database";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   items: CategoryBudgetItem[];
@@ -31,6 +32,7 @@ function ProgressBar({ percentage, color }: { percentage: number; color: string 
 }
 
 export function BudgetOverview({ items }: Props) {
+  const t = useT();
   const withBudget = items.filter((i) => i.budgetLimit !== null);
 
   if (withBudget.length === 0) {
@@ -38,7 +40,7 @@ export function BudgetOverview({ items }: Props) {
       <div className="glass-card rounded-2xl p-5">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-subtle-foreground">
-            Budget overview
+            {t("analytics.budgetOverview")}
           </h3>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">

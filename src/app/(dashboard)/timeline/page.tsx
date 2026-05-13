@@ -6,6 +6,7 @@ import {
   getTransactionsByMonth,
 } from "@/lib/supabase/queries";
 import { TransactionFeed } from "@/components/timeline/transaction-feed";
+import { TimelineHeader } from "@/components/timeline/timeline-header";
 import { SkeletonTimeline } from "@/components/ui/skeleton";
 
 type SearchParams = {
@@ -46,14 +47,7 @@ export default async function TimelinePage({
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-3xl">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            Timeline
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Every transaction across all ledgers
-          </p>
-        </header>
+        <TimelineHeader />
 
         <Suspense fallback={<SkeletonTimeline />}>
           <TimelineData

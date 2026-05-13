@@ -22,6 +22,7 @@ import { AnnualFlowChart } from "@/components/charts/annual-flow-chart";
 import { MoneyFlowChart } from "@/components/charts/money-flow-chart";
 import { ExportButton } from "@/components/ui/export-button";
 import { YearInReviewCard } from "@/components/analytics/year-in-review-card";
+import { AnalyticsHeader } from "@/components/analytics/analytics-header";
 import { forecastNetFlow } from "@/lib/forecast";
 
 export default async function AnalyticsPage() {
@@ -131,14 +132,7 @@ export default async function AnalyticsPage() {
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Analytics
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Deeper insights into your spending
-            </p>
-          </div>
+          <AnalyticsHeader />
           <div className="flex items-center gap-2">
             <YearInReviewCard
               review={yearReview}

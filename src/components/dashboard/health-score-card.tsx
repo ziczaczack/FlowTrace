@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Activity, Info } from "lucide-react";
 import type { HealthScore } from "@/lib/health-score";
+import { useT } from "@/lib/i18n";
 
 type Props = { score: HealthScore };
 
@@ -12,14 +13,6 @@ const RING_GRADIENT: Record<HealthScore["rating"], [string, string]> = {
   fair: ["#eab308", "#f59e0b"],
   "needs-attention": ["#f97316", "#ef4444"],
   critical: ["#ef4444", "#b91c1c"],
-};
-
-const RATING_LABEL: Record<HealthScore["rating"], string> = {
-  excellent: "Excellent",
-  strong: "Strong",
-  fair: "Fair",
-  "needs-attention": "Needs attention",
-  critical: "Critical",
 };
 
 // Animate the progress 0 → score on mount for a satisfying entry.
@@ -42,6 +35,7 @@ function useEase(target: number, duration = 900) {
 }
 
 export function HealthScoreCard({ score }: Props) {
+  const t = useT();
   const v = useEase(score.score);
   const [from, to] = RING_GRADIENT[score.rating];
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
@@ -55,7 +49,7 @@ export function HealthScoreCard({ score }: Props) {
     score.components.find((c) => c.key === hoveredKey) ??
     {
       key: "summary" as const,
-      label: "Overall",
+      label: t("dashboard.healthOverallLabel"),
       score: Math.round(v),
       max: 100,
       detail: score.nextAction ?? score.headline,
@@ -69,14 +63,14 @@ export function HealthScoreCard({ score }: Props) {
             <Activity className="h-3.5 w-3.5" aria-hidden />
           </span>
           <h3 className="text-sm font-semibold text-foreground">
-            Financial health
+            {t("dashboard.financialHealth")}
           </h3>
         </div>
         <span
           className="rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
           style={{ color: to }}
         >
-          {RATING_LABEL[score.rating]}
+          {t(`dashboard.healthRating.${score.rating}`)}
         </span>
       </div>
 

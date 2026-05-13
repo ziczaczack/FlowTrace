@@ -18,6 +18,14 @@ import {
   useSpeechRecognition,
   type SpeechError,
 } from "@/hooks/use-speech-recognition";
+import {
+  useT,
+  useLocale,
+  formatMoney,
+  formatDate as fmtDate,
+  translateCategoryName,
+  type TFn,
+} from "@/lib/i18n";
 
 type Props = {
   ledgers: LedgerWithMembership[];
@@ -31,29 +39,26 @@ const EXAMPLES = [
   "100 groceries monday",
 ];
 
-function formatMYR(n: number) {
-  return n.toLocaleString("en-MY", { style: "currency", currency: "MYR" });
-}
-
-function friendlyDate(ymd: string): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const target = new Date(y, m - 1, d);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diff = Math.round(
-    (today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
-  if (diff > 1 && diff <= 7) return `${diff} days ago`;
-  return target.toLocaleDateString("en-MY", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
 export function QuickAddBar({ ledgers, categories }: Props) {
   const router = useRouter();
+  const t = useT();
+  const locale = useLocale();
+  const formatMYR = (n: number) => formatMoney(n, locale);
+
+  function friendlyDate(ymd: string): string {
+    const [y, m, d] = ymd.split("-").map(Number);
+    const target = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round(
+      (today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    if (diff === 0) return t("common.today");
+    if (diff === 1) return t("common.yesterday");
+    if (diff > 1 && diff <= 7) return t("common.daysAgo", { n: diff });
+    return fmtDate(target, locale, { day: "numeric", month: "short" });
+  }
+
   const [value, setValue] = useState("");
   const [status, setStatus] = useState<
     { kind: "idle" } | { kind: "saving" } | { kind: "success" } | { kind: "error"; msg: string }
@@ -212,10 +217,10 @@ export function QuickAddBar({ ledgers, categories }: Props) {
           </span>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Quick add
+              {t("dashboard.quickAdd")}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              Type naturally. We&apos;ll parse it for you.
+              {t("dashboard.quickAddHint")}
             </p>
           </div>
         </div>
@@ -225,6 +230,7 @@ export function QuickAddBar({ ledgers, categories }: Props) {
               ledgers={writable}
               activeId={activeLedger.id}
               onPick={pickLedger}
+              t={t}
             />
           )}
           <kbd className="hidden rounded border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-subtle-foreground sm:inline-block">
@@ -241,8 +247,8 @@ export function QuickAddBar({ ledgers, categories }: Props) {
             onChange={(e) => setValue(e.target.value)}
             placeholder={
               speech.isListening
-                ? "Listening… speak naturally"
-                : `e.g. ${placeholder}`
+                ? t("dashboard.quickAddPlaceholderListening")
+                : t("dashboard.quickAddPlaceholderTyping", { example: placeholder })
             }
             className={[
               "w-full rounded-xl border bg-surface px-4 py-3 text-sm text-foreground outline-none placeholder:text-subtle-foreground focus:ring-2 focus:ring-[var(--ring)]",
@@ -262,12 +268,14 @@ export function QuickAddBar({ ledgers, categories }: Props) {
                 onClick={toggleVoice}
                 aria-pressed={speech.isListening}
                 aria-label={
-                  speech.isListening ? "Stop voice input" : "Start voice input"
+                  speech.isListening
+                    ? t("dashboard.voiceStop")
+                    : t("dashboard.voiceStart")
                 }
                 title={
                   speech.isListening
-                    ? "Stop listening"
-                    : "Speak instead of typing"
+                    ? t("dashboard.voiceListening")
+                    : t("dashboard.voicePromptHint")
                 }
                 className={[
                   "relative grid h-8 w-8 cursor-pointer place-items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
@@ -300,10 +308,10 @@ export function QuickAddBar({ ledgers, categories }: Props) {
               ].join(" ")}
             >
               {status.kind === "saving"
-                ? "Saving…"
+                ? t("dashboard.quickAddSaving")
                 : status.kind === "success"
-                  ? "Saved ✓"
-                  : "Add ↵"}
+                  ? t("dashboard.quickAddSaved")
+                  : t("dashboard.quickAddSubmit")}
             </button>
           </div>
         </div>
@@ -323,7 +331,7 @@ export function QuickAddBar({ ledgers, categories }: Props) {
               }}
             >
               <span>{parsed.categoryIcon ?? "📦"}</span>
-              {parsed.categoryName}
+              {translateCategoryName(parsed.categoryName, t)}
             </span>
             <span
               className={[
@@ -355,18 +363,24 @@ export function QuickAddBar({ ledgers, categories }: Props) {
               ].join(" ")}
             >
               <Sparkles className="h-3 w-3" aria-hidden />
-              {parsed.confidence} confidence
+              {t("dashboard.confidence", {
+                level: t(
+                  parsed.confidence === "high"
+                    ? "dashboard.confidenceHigh"
+                    : parsed.confidence === "medium"
+                      ? "dashboard.confidenceMedium"
+                      : "dashboard.confidenceLow",
+                ),
+              })}
             </span>
           </div>
         ) : value.trim() ? (
           <p className="text-xs text-subtle-foreground">
-            Need at least a number. Try <em>&ldquo;25 coffee&rdquo;</em> or{" "}
-            <em>&ldquo;+500 salary&rdquo;</em>.
+            {t("dashboard.quickAddNeedNumber")}
           </p>
         ) : (
           <p className="text-xs text-subtle-foreground">
-            Tip: press <kbd className="rounded border border-border bg-surface px-1 py-0.5 text-[10px]">/</kbd>{" "}
-            anywhere to focus this bar.
+            {t("dashboard.quickAddSlashTip", { kbd: "/" })}
           </p>
         )}
       </div>
@@ -377,28 +391,30 @@ export function QuickAddBar({ ledgers, categories }: Props) {
       {status.kind === "success" && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-positive">
           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-          Added to {activeLedger?.name ?? "your ledger"}.
+          {t("dashboard.quickAddAddedTo", {
+            ledger: activeLedger?.name ?? t("dashboard.quickAddYourLedger"),
+          })}
         </p>
       )}
       {speech.error && status.kind !== "saving" && (
-        <p className="mt-2 text-xs text-negative">{speechErrorLabel(speech.error)}</p>
+        <p className="mt-2 text-xs text-negative">{speechErrorLabel(speech.error, t)}</p>
       )}
     </div>
   );
 }
 
-function speechErrorLabel(err: SpeechError): string {
+function speechErrorLabel(err: SpeechError, t: TFn): string {
   switch (err) {
     case "not-allowed":
-      return "Microphone access blocked. Enable it in your browser settings.";
+      return t("dashboard.voiceErrorPermission");
     case "no-speech":
-      return "Didn't catch that — try again.";
+      return t("dashboard.voiceErrorNoSpeech");
     case "audio-capture":
-      return "No microphone detected.";
+      return t("dashboard.voiceErrorNoMic");
     case "network":
-      return "Voice recognition needs a network connection.";
+      return t("dashboard.voiceErrorNetwork");
     default:
-      return "Voice input failed. Try typing instead.";
+      return t("dashboard.voiceErrorGeneric");
   }
 }
 
@@ -406,10 +422,12 @@ function LedgerPickerDropdown({
   ledgers,
   activeId,
   onPick,
+  t,
 }: {
   ledgers: LedgerWithMembership[];
   activeId: string;
   onPick: (id: string) => void;
+  t: TFn;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -433,14 +451,14 @@ function LedgerPickerDropdown({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex max-w-[180px] cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface-muted px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-surface-strong"
-        title="Switch ledger"
+        title={t("dashboard.switchLedger")}
       >
         <span aria-hidden>{active.icon ?? "💼"}</span>
         <span className="max-w-[110px] truncate">{active.name}</span>
         {active.member_count > 1 && (
           <Users
             className="h-3 w-3 shrink-0 text-subtle-foreground"
-            aria-label="shared"
+            aria-label={t("dashboard.shared")}
           />
         )}
         <ChevronDown
@@ -475,13 +493,14 @@ function LedgerPickerDropdown({
                   </span>
                   <span className="block text-[10px] uppercase tracking-wide text-subtle-foreground">
                     {l.role}
-                    {l.member_count > 1 && ` · ${l.member_count} members`}
+                    {l.member_count > 1 &&
+                      ` · ${t("dashboard.members", { count: l.member_count })}`}
                   </span>
                 </span>
                 {l.id === activeId && (
                   <CheckCircle2
                     className="h-3.5 w-3.5 text-primary"
-                    aria-label="active"
+                    aria-label={t("common.yes")}
                   />
                 )}
               </button>

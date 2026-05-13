@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toAuthError } from "@/types/auth";
+import { useT } from "@/lib/i18n";
 
 type FieldErrors = {
   fullName?: string;
@@ -16,6 +17,7 @@ type FieldErrors = {
 
 export default function SignupPage() {
   const supabase = createClient();
+  const t = useT();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,12 +31,11 @@ export default function SignupPage() {
 
   function validate(): FieldErrors {
     const errs: FieldErrors = {};
-    if (!fullName.trim()) errs.fullName = "Please enter your name.";
-    if (!email.trim()) errs.email = "Please enter your email.";
-    if (password.length < 8)
-      errs.password = "Password must be at least 8 characters.";
+    if (!fullName.trim()) errs.fullName = t("auth.errors.enterName");
+    if (!email.trim()) errs.email = t("auth.errors.enterEmail");
+    if (password.length < 8) errs.password = t("auth.errors.passwordMin");
     if (confirmPassword !== password)
-      errs.confirmPassword = "Passwords do not match.";
+      errs.confirmPassword = t("auth.errors.passwordMismatch");
     return errs;
   }
 
@@ -73,7 +74,7 @@ export default function SignupPage() {
           Flow<span className="text-primary">Trace</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Create your account
+          {t("auth.signUpSubtitle")}
         </p>
       </div>
 
@@ -99,28 +100,26 @@ export default function SignupPage() {
               </svg>
             </div>
             <h2 className="text-lg font-semibold text-foreground">
-              Check your email
+              {t("auth.checkEmail")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              We sent a confirmation link to{" "}
-              <span className="font-medium text-foreground">{email}</span>.
-              Click the link to activate your account.
+              {t("auth.confirmationSent", { email })}
             </p>
             <Link
               href="/login"
               className="mt-2 text-sm font-medium text-primary transition-colors hover:text-primary-hover"
             >
-              Back to sign in
+              {t("auth.backToSignIn")}
             </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
             <Input
-              label="Full name"
+              label={t("auth.fullName")}
               type="text"
               name="fullName"
               autoComplete="name"
-              placeholder="Jane Doe"
+              placeholder={t("auth.namePlaceholder")}
               value={fullName}
               onChange={setFullName}
               error={fieldErrors.fullName}
@@ -128,11 +127,11 @@ export default function SignupPage() {
               required
             />
             <Input
-              label="Email"
+              label={t("auth.email")}
               type="email"
               name="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={setEmail}
               error={fieldErrors.email}
@@ -140,11 +139,11 @@ export default function SignupPage() {
               required
             />
             <Input
-              label="Password"
+              label={t("auth.password")}
               type="password"
               name="password"
               autoComplete="new-password"
-              placeholder="At least 8 characters"
+              placeholder={t("auth.passwordMinPlaceholder")}
               value={password}
               onChange={setPassword}
               error={fieldErrors.password}
@@ -152,11 +151,11 @@ export default function SignupPage() {
               required
             />
             <Input
-              label="Confirm password"
+              label={t("auth.confirmPassword")}
               type="password"
               name="confirmPassword"
               autoComplete="new-password"
-              placeholder="Re-enter password"
+              placeholder={t("auth.confirmPasswordPlaceholder")}
               value={confirmPassword}
               onChange={setConfirmPassword}
               error={fieldErrors.confirmPassword}
@@ -175,16 +174,16 @@ export default function SignupPage() {
             )}
 
             <Button type="submit" loading={loading} className="w-full">
-              {loading ? "Creating account..." : "Create account"}
+              {loading ? t("auth.creatingAccount") : t("auth.signUp")}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              {t("auth.alreadyHaveAccount")}{" "}
               <Link
                 href="/login"
                 className="font-medium text-primary transition-colors hover:text-primary-hover"
               >
-                Sign in
+                {t("auth.signIn")}
               </Link>
             </p>
           </form>

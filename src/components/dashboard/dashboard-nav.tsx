@@ -11,15 +11,16 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useT } from "@/lib/i18n";
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
+type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
 const ITEMS: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/timeline", label: "Timeline", icon: List },
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/analytics", label: "Analytics", icon: BarChart2 },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/timeline", labelKey: "nav.timeline", icon: List },
+  { href: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
+  { href: "/analytics", labelKey: "nav.analytics", icon: BarChart2 },
+  { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -29,6 +30,7 @@ function isActive(pathname: string, href: string): boolean {
 
 export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
   const pathname = usePathname();
+  const t = useT();
 
   if (variant === "sidebar") {
     return (
@@ -59,7 +61,7 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
         </div>
 
         <nav className="flex flex-col gap-1">
-          {ITEMS.map(({ href, label, icon: Icon }) => {
+          {ITEMS.map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
@@ -74,7 +76,7 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
                 ].join(" ")}
               >
                 <Icon className="h-[18px] w-[18px]" aria-hidden />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
@@ -87,9 +89,7 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
               ⌘ K
             </kbd>
           </p>
-          <p className="mt-1 leading-relaxed">
-            Tracking made calm. Built with care for everyday investors.
-          </p>
+          <p className="mt-1 leading-relaxed">{t("nav.tagline")}</p>
         </div>
       </aside>
     );
@@ -97,7 +97,7 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
 
   return (
     <nav className="fixed bottom-3 left-3 right-3 z-30 grid grid-cols-5 rounded-2xl border border-border bg-surface/85 px-1 py-1 shadow-[var(--shadow-elevated)] backdrop-blur-xl md:hidden">
-      {ITEMS.map(({ href, label, icon: Icon }) => {
+      {ITEMS.map(({ href, labelKey, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
           <Link
@@ -112,7 +112,7 @@ export function DashboardNav({ variant }: { variant: "sidebar" | "bottom" }) {
             ].join(" ")}
           >
             <Icon className="h-[18px] w-[18px]" aria-hidden />
-            {label}
+            {t(labelKey)}
           </Link>
         );
       })}

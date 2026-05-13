@@ -28,25 +28,8 @@ import { NetFlowChart } from "@/components/charts/net-flow-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { UserMenu } from "@/components/dashboard/user-menu";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardFab } from "./dashboard-client";
-
-function greeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
-
-function todayLabel(): string {
-  return new Date().toLocaleDateString("en-MY", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function firstName(user: {
   user_metadata?: Record<string, unknown>;
@@ -140,24 +123,11 @@ export default async function DashboardPage() {
   return (
     <div className="px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-5xl">
-        {/* Header */}
-        <header className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-subtle-foreground">
-              {todayLabel()}
-            </p>
-            <h1 className="mt-1 text-[28px] font-semibold tracking-tight text-foreground sm:text-[32px]">
-              {greeting()},{" "}
-              <span className="text-primary">{firstName(user)}</span>
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="md:hidden">
-              <ThemeToggle />
-            </div>
-            <UserMenu email={user.email ?? ""} fullName={fullName} />
-          </div>
-        </header>
+        <DashboardHeader
+          email={user.email ?? ""}
+          fullName={fullName}
+          firstName={firstName(user)}
+        />
 
         {isEmpty ? (
           <>

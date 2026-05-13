@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { Trash2 } from "lucide-react";
 import type { Transaction } from "@/types/database";
 import { formatMYR } from "@/lib/utils";
+import { useT, useLocale, translateCategoryName } from "@/lib/i18n";
 
 type Props = {
   transaction: Transaction;
@@ -11,17 +12,26 @@ type Props = {
   onDelete: (id: string) => Promise<void> | void;
 };
 
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "Cash",
-  card: "Card",
-  "e-wallet": "E-wallet",
-  bank_transfer: "Bank transfer",
-};
+function paymentLabelKey(method: string): string {
+  switch (method) {
+    case "cash":
+      return "modal.paymentCash";
+    case "card":
+      return "modal.paymentCard";
+    case "e-wallet":
+      return "modal.paymentEWallet";
+    case "bank_transfer":
+      return "modal.paymentBankTransfer";
+    default:
+      return "";
+  }
+}
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, locale: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("en-MY", {
+  const bcp = locale === "zh-CN" ? "zh-CN" : "en-MY";
+  return d.toLocaleTimeString(bcp, {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -44,6 +54,8 @@ function amountDisplay(t: Transaction): {
 }
 
 export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
+  const t = useT();
+  const locale = useLocale();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
 
@@ -82,10 +94,13 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
   const cat = transaction.category;
   const color = cat?.color ?? "#6B7280";
   const icon = cat?.icon ?? "📦";
-  const name = cat?.name ?? "Uncategorised";
-  const paymentLabel = transaction.payment_method
-    ? PAYMENT_LABELS[transaction.payment_method] ?? transaction.payment_method
-    : null;
+  const name = cat?.name ? translateCategoryName(cat.name, t) : t("category.other");
+  const paymentKey = transaction.payment_method
+    ? paymentLabelKey(transaction.payment_method)
+    : "";
+  const paymentLabel = paymentKey
+    ? t(paymentKey)
+    : transaction.payment_method ?? null;
   const amt = amountDisplay(transaction);
 
   return (
@@ -148,14 +163,14 @@ export function TransactionRow({ transaction, onEdit, onDelete }: Props) {
             {amt.text}
           </p>
           <p className="text-[11px] text-subtle-foreground tabular-nums">
-            {formatTime(transaction.created_at)}
+            {formatTime(transaction.created_at, locale)}
           </p>
         </div>
 
         {/* Trash — always visible on touch devices (low opacity), hover-only on desktop. */}
         <button
           type="button"
-          aria-label="Delete transaction"
+          aria-label={t("common.delete")}
           onClick={(e) => {
             e.stopPropagation();
             triggerDelete();

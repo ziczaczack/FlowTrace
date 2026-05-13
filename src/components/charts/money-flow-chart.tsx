@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Layers } from "lucide-react";
 import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
 import type { MoneyFlow } from "@/lib/supabase/queries";
+import { useT } from "@/lib/i18n";
 
 type Props = { data: MoneyFlow };
 
@@ -270,16 +271,17 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
 
 export function MoneyFlowChart({ data }: Props) {
   const dataset = useMemo(() => buildSankey(data), [data]);
+  const tWith = useT();
 
   return (
     <div className="glass-card rounded-2xl p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Layers className="h-4 w-4 text-primary" aria-hidden />
-          Money flow
+          {tWith("analytics.moneyFlow")}
         </h3>
         <span className="text-[11px] uppercase tracking-wide text-subtle-foreground">
-          This month
+          {tWith("dashboard.incomeThisMonth").split(" · ")[1] || "This month"}
         </span>
       </div>
 

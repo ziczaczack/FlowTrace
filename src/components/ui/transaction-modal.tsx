@@ -12,6 +12,12 @@ import type { NewTransaction } from "@/types/forms";
 import { ReceiptScanner } from "@/components/ui/receipt-scanner";
 import { Toast } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
+import {
+  useT,
+  useLocale,
+  formatDate as fmtDate,
+  translateCategoryName,
+} from "@/lib/i18n";
 
 type Mode = "create" | "edit";
 
@@ -24,31 +30,31 @@ type TransactionModalProps = {
   mode: Mode;
 };
 
-const PAYMENT_METHODS: { id: string; label: string }[] = [
-  { id: "cash", label: "Cash" },
-  { id: "card", label: "Card" },
-  { id: "e-wallet", label: "E-wallet" },
-  { id: "bank_transfer", label: "Bank transfer" },
+const PAYMENT_METHODS: { id: string; labelKey: string }[] = [
+  { id: "cash", labelKey: "modal.paymentCash" },
+  { id: "card", labelKey: "modal.paymentCard" },
+  { id: "e-wallet", labelKey: "modal.paymentEWallet" },
+  { id: "bank_transfer", labelKey: "modal.paymentBankTransfer" },
 ];
 
 const TYPE_OPTIONS: {
   id: TransactionType;
-  label: string;
+  labelKey: string;
   active: string;
 }[] = [
   {
     id: "income",
-    label: "Income",
+    labelKey: "common.income",
     active: "bg-positive border-positive text-white",
   },
   {
     id: "expense",
-    label: "Expense",
+    labelKey: "common.expense",
     active: "bg-negative border-negative text-white",
   },
   {
     id: "transfer",
-    label: "Transfer",
+    labelKey: "common.transfer",
     active: "bg-accent border-accent text-white",
   },
 ];
@@ -77,25 +83,6 @@ function todayIso(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function formatDateLabel(iso: string): string {
-  // iso is YYYY-MM-DD; treat as a local calendar date.
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  const date = new Date(y, m - 1, d);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (date.getTime() === today.getTime()) return "Today";
-  if (date.getTime() === yesterday.getTime()) return "Yesterday";
-
-  return date.toLocaleDateString("en-MY", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-  });
-}
 
 export function TransactionModal({
   open,
@@ -105,6 +92,26 @@ export function TransactionModal({
   initialData,
   mode,
 }: TransactionModalProps) {
+  const t = useT();
+  const locale = useLocale();
+
+  function formatDateLabel(iso: string): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    if (!y || !m || !d) return iso;
+    const date = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.getTime() === today.getTime()) return t("common.today");
+    if (date.getTime() === yesterday.getTime()) return t("common.yesterday");
+    return fmtDate(date, locale, {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  }
+
   const [amountInput, setAmountInput] = useState<string>(
     initialData ? String(parseFloat(initialData.amount)) : "",
   );
@@ -383,7 +390,7 @@ export function TransactionModal({
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/60 text-foreground transition-colors hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20"
           >
             <svg
@@ -413,7 +420,7 @@ export function TransactionModal({
             className="w-full bg-transparent text-center text-[44px] font-semibold tracking-tight text-foreground tabular-nums placeholder:text-subtle-foreground outline-none"
           />
           {amountInput && !amountValid && (
-            <p className="mt-1 text-xs text-negative">Enter a valid amount</p>
+            <p className="mt-1 text-xs text-negative">{t("modal.amount")}</p>
           )}
           <div className="mt-1 flex items-center justify-center gap-2">
             {autoFilled && (
@@ -454,7 +461,7 @@ export function TransactionModal({
                     : "border-border bg-surface-muted text-muted-foreground hover:text-foreground",
                 ].join(" ")}
               >
-                {opt.label}
+                {t(opt.labelKey)}
               </button>
             );
           })}
@@ -463,13 +470,13 @@ export function TransactionModal({
         {/* Category grid */}
         <div className="mb-5">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-subtle-foreground">
-            Category
+            {t("modal.category")}
           </p>
           {categoriesLoading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
           ) : visibleCategories.length === 0 ? (
             <p className="text-sm text-subtle-foreground">
-              No categories — visit /api/seed in dev to seed defaults.
+              {t("modal.selectCategory")}
             </p>
           ) : (
             <>
@@ -496,7 +503,9 @@ export function TransactionModal({
                       <span aria-hidden className="shrink-0">
                         {c.icon}
                       </span>
-                      <span className="truncate">{c.name}</span>
+                      <span className="truncate">
+                        {translateCategoryName(c.name, t)}
+                      </span>
                     </button>
                   );
                 })}
@@ -508,8 +517,12 @@ export function TransactionModal({
                   className="mt-2 cursor-pointer text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {showAllCategories
-                    ? "Show fewer"
-                    : `Show ${overflowCount} more`}
+                    ? locale === "zh-CN"
+                      ? "收起"
+                      : "Show fewer"
+                    : locale === "zh-CN"
+                      ? `展开 ${overflowCount} 项`
+                      : `Show ${overflowCount} more`}
                 </button>
               )}
             </>
@@ -519,7 +532,7 @@ export function TransactionModal({
         {/* Payment method */}
         <div className="mb-5">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-subtle-foreground">
-            Payment
+            {t("modal.paymentMethod")}
           </p>
           <div className="grid grid-cols-4 gap-2">
             {PAYMENT_METHODS.map((m) => {
@@ -536,7 +549,7 @@ export function TransactionModal({
                       : "border-border bg-surface-muted text-muted-foreground hover:text-foreground",
                   ].join(" ")}
                 >
-                  {m.label}
+                  {t(m.labelKey)}
                 </button>
               );
             })}
@@ -546,7 +559,7 @@ export function TransactionModal({
         {/* Date */}
         <div className="mb-5 flex items-center justify-between">
           <p className="text-[11px] font-medium uppercase tracking-wide text-subtle-foreground">
-            Date
+            {t("modal.date")}
           </p>
           <button
             type="button"
@@ -561,7 +574,7 @@ export function TransactionModal({
             value={txnDate}
             onChange={(e) => setTxnDate(e.target.value)}
             className="sr-only"
-            aria-label="Transaction date"
+            aria-label={t("modal.date")}
           />
         </div>
 
@@ -571,7 +584,7 @@ export function TransactionModal({
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Add a note..."
+            placeholder={t("modal.notePlaceholder")}
             className="w-full rounded-xl border border-border bg-surface-muted px-3.5 py-2.5 text-sm text-foreground placeholder:text-subtle-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-[var(--ring)]"
           />
         </div>
@@ -596,11 +609,13 @@ export function TransactionModal({
                 <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" />
               </svg>
             )}
-            {mode === "edit"
-              ? "Save changes"
-              : scanQueue.length > 0
-                ? "Save & next"
-                : "Save"}
+            {submitting
+              ? t("common.saving")
+              : mode === "edit"
+                ? t("common.save")
+                : scanQueue.length > 0
+                  ? `${t("common.save")} →`
+                  : t("common.save")}
           </button>
 
           <Toast {...toast} />
@@ -611,7 +626,7 @@ export function TransactionModal({
               disabled={deleting}
               className="w-full cursor-pointer rounded-xl border border-negative px-4 py-3 text-sm font-semibold text-negative transition-colors duration-200 hover:bg-[var(--negative-soft)] disabled:opacity-50"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("common.loading") : t("common.delete")}
             </button>
           )}
         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, TrendingUp, TrendingDown } from "lucide-react";
+import { useT, useLocale, formatMoney } from "@/lib/i18n";
 
 type Props = {
   totalBalance: number;
@@ -9,9 +10,6 @@ type Props = {
   expense: number;
   net: number;
 };
-
-const formatMYR = (n: number) =>
-  n.toLocaleString("en-MY", { style: "currency", currency: "MYR" });
 
 /** Animate a number from 0 → target using requestAnimationFrame. */
 function useCountUp(target: number, durationMs = 700): number {
@@ -37,6 +35,9 @@ function useCountUp(target: number, durationMs = 700): number {
 }
 
 export function SummaryCards({ totalBalance, income, expense, net }: Props) {
+  const t = useT();
+  const locale = useLocale();
+  const formatMYR = (n: number) => formatMoney(n, locale);
   const balanceVal = useCountUp(totalBalance);
   const incomeVal = useCountUp(income);
   const expenseVal = useCountUp(expense);
@@ -55,7 +56,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
           className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"
         />
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
-          Total balance
+          {t("dashboard.totalBalance")}
         </p>
         <p className="amount-sensitive mt-2.5 text-[26px] font-semibold tracking-tight text-foreground tabular-nums">
           {formatMYR(balanceVal)}
@@ -65,7 +66,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
       {/* Income */}
       <div className="glass-card relative overflow-hidden rounded-2xl p-5">
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
-          Income · this month
+          {t("dashboard.incomeThisMonth")}
         </p>
         <p className="amount-sensitive mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-positive tabular-nums">
           <ArrowUpRight className="h-5 w-5 shrink-0" aria-hidden />
@@ -76,7 +77,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
       {/* Expenses */}
       <div className="glass-card relative overflow-hidden rounded-2xl p-5">
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
-          Expenses · this month
+          {t("dashboard.expensesThisMonth")}
         </p>
         <p className="amount-sensitive mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-negative tabular-nums">
           <ArrowDownRight className="h-5 w-5 shrink-0" aria-hidden />
@@ -87,7 +88,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
       {/* Net / Savings Rate */}
       <div className="glass-card relative overflow-hidden rounded-2xl p-5">
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
-          Net · this month
+          {t("dashboard.netThisMonth")}
         </p>
         <p
           className={`amount-sensitive mt-2.5 flex items-center gap-1.5 text-[22px] font-semibold tracking-tight tabular-nums ${
@@ -112,7 +113,7 @@ export function SummaryCards({ totalBalance, income, expense, net }: Props) {
                   : "text-negative"
             }`}
           >
-            {savingsRate}% savings rate
+            {t("dashboard.savingsRate", { pct: savingsRate })}
           </p>
         )}
       </div>

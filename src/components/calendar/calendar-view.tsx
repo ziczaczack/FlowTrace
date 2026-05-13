@@ -11,6 +11,15 @@ import {
   X,
 } from "lucide-react";
 import type { Transaction } from "@/types/database";
+import {
+  useT,
+  useLocale,
+  formatMoney,
+  formatDate as fmtDate,
+  translateCategoryName,
+  type TFn,
+  type Locale,
+} from "@/lib/i18n";
 
 type DayEntry = { date: string; income: number; expense: number; count: number };
 
@@ -19,27 +28,6 @@ type Props = {
   year: number;
   days: DayEntry[];
 };
-
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-function formatMYR(n: number) {
-  return n.toLocaleString("en-MY", { style: "currency", currency: "MYR" });
-}
 
 function ymd(y: number, m: number, d: number) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -58,6 +46,21 @@ function daysInMonth(year: number, month: number): number {
 
 export function CalendarView({ month, year, days }: Props) {
   const router = useRouter();
+  const t = useT();
+  const locale = useLocale();
+  const formatMYR = (n: number) => formatMoney(n, locale);
+  const WEEKDAYS = useMemo(() => {
+    // Mon-first. Use Intl to get translated short weekday names.
+    const base = new Date(2024, 0, 1); // Mon Jan 1 2024
+    return [0, 1, 2, 3, 4, 5, 6].map((i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d.toLocaleDateString(locale === "zh-CN" ? "zh-CN" : "en-MY", {
+        weekday: "short",
+      });
+    });
+  }, [locale]);
+
   const [selected, setSelected] = useState<string | null>(null);
   const [dayTxns, setDayTxns] = useState<Transaction[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -159,18 +162,21 @@ export function CalendarView({ month, year, days }: Props) {
             type="button"
             onClick={() => go(-1)}
             className="rounded-lg border border-border bg-surface p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-            aria-label="Previous month"
+            aria-label={t("timeline.prevMonth")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <h2 className="min-w-[180px] text-center text-lg font-semibold tracking-tight text-foreground">
-            {MONTH_NAMES[month - 1]} {year}
+            {fmtDate(new Date(year, month - 1, 1), locale, {
+              month: "long",
+              year: "numeric",
+            })}
           </h2>
           <button
             type="button"
             onClick={() => go(1)}
             className="rounded-lg border border-border bg-surface p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-            aria-label="Next month"
+            aria-label={t("timeline.nextMonth")}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -217,7 +223,10 @@ export function CalendarView({ month, year, days }: Props) {
               key={date}
               type="button"
               onClick={() => setSelected(date)}
-              aria-label={`${MONTH_NAMES[month - 1]} ${d}${entry ? `, ${entry.count} transactions` : ""}`}
+              aria-label={fmtDate(new Date(year, month - 1, d), locale, {
+                day: "numeric",
+                month: "long",
+              })}
               className={[
                 "group relative flex aspect-square flex-col items-start justify-between rounded-xl border p-1.5 text-left transition-all sm:p-2",
                 today
@@ -266,24 +275,25 @@ export function CalendarView({ month, year, days }: Props) {
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-subtle-foreground">
-        <span>Less</span>
-        {[0, 0.2, 0.45, 0.7, 1].map((t, i) => (
+        <span>{locale === "zh-CN" ? "少" : "Less"}</span>
+        {[0, 0.2, 0.45, 0.7, 1].map((step, i) => (
           <span
             key={i}
             className="h-3 w-3 rounded"
             style={{
               background: `color-mix(in oklab, var(--negative) ${Math.round(
-                t * 35,
+                step * 35,
               )}%, var(--surface))`,
               border: "1px solid var(--border)",
             }}
           />
         ))}
-        <span>More expense</span>
+        <span>{locale === "zh-CN" ? "支出更多" : "More expense"}</span>
         <span className="ml-auto hidden sm:inline">
-          Use <kbd className="rounded border border-border bg-surface px-1 text-[10px]">←</kbd>{" "}
+          {locale === "zh-CN" ? "使用 " : "Use "}
+          <kbd className="rounded border border-border bg-surface px-1 text-[10px]">←</kbd>{" "}
           <kbd className="rounded border border-border bg-surface px-1 text-[10px]">→</kbd>{" "}
-          to switch months.
+          {locale === "zh-CN" ? "切换月份。" : "to switch months."}
         </span>
       </div>
 
@@ -295,6 +305,8 @@ export function CalendarView({ month, year, days }: Props) {
           txns={dayTxns ?? []}
           entry={dayMap.get(selected) ?? null}
           onClose={() => setSelected(null)}
+          t={t}
+          locale={locale}
         />
       )}
     </div>
@@ -307,15 +319,20 @@ function DayDrawer({
   txns,
   loading,
   onClose,
+  t,
+  locale,
 }: {
   date: string;
   entry: DayEntry | null;
   txns: Transaction[];
   loading: boolean;
   onClose: () => void;
+  t: TFn;
+  locale: Locale;
 }) {
+  const formatMYR = (n: number) => formatMoney(n, locale);
   const [y, m, d] = date.split("-").map(Number);
-  const label = new Date(y, m - 1, d).toLocaleDateString("en-MY", {
+  const label = fmtDate(new Date(y, m - 1, d), locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -340,7 +357,7 @@ function DayDrawer({
         <header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle-foreground">
-              Day detail
+              {t("calendar.title")}
             </p>
             <h3 className="mt-0.5 text-base font-semibold text-foreground">
               {label}
@@ -350,7 +367,7 @@ function DayDrawer({
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -359,13 +376,13 @@ function DayDrawer({
         {entry && (
           <div className="grid grid-cols-2 gap-3 border-b border-border px-5 py-4 text-xs">
             <div>
-              <p className="text-subtle-foreground">Income</p>
+              <p className="text-subtle-foreground">{t("common.income")}</p>
               <p className="amount-sensitive mt-1 text-lg font-semibold text-positive tabular-nums">
                 {formatMYR(entry.income)}
               </p>
             </div>
             <div>
-              <p className="text-subtle-foreground">Expense</p>
+              <p className="text-subtle-foreground">{t("common.expense")}</p>
               <p className="amount-sensitive mt-1 text-lg font-semibold text-negative tabular-nums">
                 {formatMYR(entry.expense)}
               </p>
@@ -380,35 +397,37 @@ function DayDrawer({
             </div>
           ) : txns.length === 0 ? (
             <p className="py-10 text-center text-sm text-subtle-foreground">
-              No transactions on this day.
+              {t("timeline.noTransactions")}
             </p>
           ) : (
             <ul className="space-y-1">
-              {txns.map((t) => {
-                const amount = parseFloat(t.amount);
-                const isIncome = t.type === "income";
+              {txns.map((txn) => {
+                const amount = parseFloat(txn.amount);
+                const isIncome = txn.type === "income";
                 return (
                   <li
-                    key={t.id}
+                    key={txn.id}
                     className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-muted"
                   >
                     <div
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base"
                       style={{
-                        background: t.category?.color
-                          ? `${t.category.color}22`
+                        background: txn.category?.color
+                          ? `${txn.category.color}22`
                           : "var(--surface-muted)",
                       }}
                     >
-                      {t.category?.icon ?? "💸"}
+                      {txn.category?.icon ?? "💸"}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">
-                        {t.category?.name ?? "Transaction"}
+                        {txn.category?.name
+                          ? translateCategoryName(txn.category.name, t)
+                          : t("category.other")}
                       </p>
-                      {t.note && (
+                      {txn.note && (
                         <p className="truncate text-[11px] text-muted-foreground">
-                          {t.note}
+                          {txn.note}
                         </p>
                       )}
                     </div>
