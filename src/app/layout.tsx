@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -32,6 +32,21 @@ export const metadata: Metadata = {
     description:
       "Low-friction entry. Visual dashboards. Monthly reports for individual investors.",
   },
+  appleWebApp: {
+    capable: true,
+    title: "FlowTrace",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#060d1c" },
+  ],
 };
 
 // Inline script: read the persisted theme & preferences BEFORE first paint
